@@ -635,8 +635,11 @@ if (filtered.length === 0 && raw.length >= 3) {
     }
     mCount.textContent = `${selected.size} selected`;
   };
-
-  mSearch.oninput = renderList;
+let searchT = null;
+mSearch.oninput = () => {
+  clearTimeout(searchT);
+  searchT = setTimeout(renderList, 150);
+};
 
   mNewCustom.onclick = () => {
     openCustomExerciseModal(() => {
