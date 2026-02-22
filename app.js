@@ -485,6 +485,8 @@ function unlockBodyScroll(){
   window.scrollTo(0, y);
 }
 function openModal(html, kind = "") {
+  lockBodyScroll(); // ✅ add this first
+
   modalContent.innerHTML = html;
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden","false");
@@ -496,6 +498,8 @@ function closeModal() {
   modal.setAttribute("aria-hidden","true");
   modalContent.innerHTML = "";
   modal.classList.remove("picker-open");
+
+  unlockBodyScroll(); // ✅ add this last
 }
 
 function openNewWorkoutModal() {
