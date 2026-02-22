@@ -1,7 +1,5 @@
 :root{
   --bg:#0b0c10;
-  --surface:#121420;
-  --surface2:#171a2a;
   --border:rgba(255,255,255,.07);
   --text:#f4f6ff;
   --muted:rgba(244,246,255,.65);
@@ -51,7 +49,7 @@ body{
   border: 1px solid rgba(90,167,255,.20);
   background: rgba(90,167,255,.12);
   color: var(--text);
-  font-weight: 900;
+  font-weight: 950;
   font-size: 12px;
 }
 
@@ -75,7 +73,7 @@ body{
 .panelhead{ display:flex; flex-direction:column; gap:4px; margin-bottom:10px; }
 
 h2{ margin:0; font-size:18px; }
-.label{ font-weight: 900; }
+.label{ font-weight: 950; }
 
 .muted{ color:var(--muted); font-size:14px; }
 .help{ color:var(--muted2); font-size:13px; margin-top:8px; }
@@ -169,7 +167,7 @@ select{ flex:1; min-width: 240px; }
   color: var(--text);
   padding: 12px 12px;
   border-radius: 14px;
-  font-weight: 900;
+  font-weight: 950;
   cursor:pointer;
 }
 .navitem.is-active{
@@ -308,9 +306,7 @@ select{ flex:1; min-width: 240px; }
   border: 1px solid var(--border);
   background: rgba(255,255,255,.04);
 }
-.chk{
-  width:20px; height:20px;
-}
+.chk{ width:20px; height:20px; }
 
 @media (max-width: 520px){
   .container{ padding: 12px; }
