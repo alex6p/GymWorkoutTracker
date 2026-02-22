@@ -2,30 +2,31 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Gym Tracker</title>
 
   <link rel="manifest" href="./manifest.webmanifest" />
-  <meta name="theme-color" content="#0b0b0b" />
+  <meta name="theme-color" content="#0b0c10" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
 
   <link rel="stylesheet" href="./styles.css" />
 </head>
+
 <body>
+  <!-- Top header (simple, modern) -->
   <header class="topbar">
-    <div class="brand">Gym Tracker</div>
-    <div class="tabs" role="tablist">
-      <button class="tab is-active" data-tab="workout" role="tab">Workout</button>
-      <button class="tab" data-tab="programs" role="tab">Programs</button>
-      <button class="tab" data-tab="exercises" role="tab">Exercises</button>
-      <button class="tab" data-tab="history" role="tab">History</button>
-      <button class="tab" data-tab="settings" role="tab">Settings</button>
+    <div class="brandrow">
+      <div>
+        <div class="brand">Gym Tracker</div>
+        <div class="subbrand">Log fast • Rest timer • History</div>
+      </div>
+      <div id="headerPill" class="pill hidden"></div>
     </div>
   </header>
 
   <main class="container">
-    <!-- Rest timer bar -->
-    <section id="timerBar" class="timerbar hidden">
+    <!-- Rest timer pill -->
+    <section id="timerBar" class="timerbar hidden" aria-live="polite">
       <div class="timerbar-row">
         <div>
           <div class="timer-title">Rest</div>
@@ -33,8 +34,8 @@
         </div>
         <div class="timer-right">
           <div id="timerCountdown" class="timer-countdown">0:00</div>
-          <button id="timerStop" class="btn btn-ghost">Stop</button>
-          <button id="timerPlus" class="btn btn-ghost">+30s</button>
+          <button id="timerStop" class="iconbtn" title="Stop">⏹</button>
+          <button id="timerPlus" class="iconbtn" title="Add 30 seconds">+30</button>
         </div>
       </div>
       <div class="progress">
@@ -44,13 +45,20 @@
 
     <!-- WORKOUT -->
     <section id="tab-workout" class="tabpage">
-      <div class="panel">
-        <h2>Start Workout</h2>
+      <div id="workoutStart" class="panel">
+        <div class="panelhead">
+          <h2>Start workout</h2>
+          <div class="muted">Pick a template you created in Programs.</div>
+        </div>
+
         <div class="row">
           <select id="startTemplateSelect"></select>
           <button id="startWorkoutBtn" class="btn">Start</button>
         </div>
-        <div class="help">Create a program/workout first under <b>Programs</b>.</div>
+
+        <div class="help">
+          No templates yet? Go to <b>Programs</b> → create a program → add a workout → add exercises.
+        </div>
       </div>
 
       <section id="activeWorkout" class="panel hidden">
@@ -59,7 +67,8 @@
             <h2 id="activeTitle">Workout</h2>
             <div id="activeMeta" class="muted"></div>
           </div>
-          <button id="endWorkoutBtn" class="btn btn-danger">End Workout</button>
+
+          <button id="endWorkoutBtn" class="btn btn-danger">Finish</button>
         </div>
 
         <div id="activeExercises"></div>
@@ -68,56 +77,36 @@
 
     <!-- PROGRAMS -->
     <section id="tab-programs" class="tabpage hidden">
-      <div class="panel">
-        <h2>Programs</h2>
-        <div class="row">
-          <input id="newProgramName" class="input" placeholder="New program name (e.g., PPL)" />
-          <button id="addProgramBtn" class="btn">Add</button>
-        </div>
-      </div>
-      <div id="programsList"></div>
+      <div id="programsRoot"></div>
     </section>
 
     <!-- EXERCISES -->
     <section id="tab-exercises" class="tabpage hidden">
       <div class="panel">
-        <h2>Exercises</h2>
-        <div class="row">
-          <input id="exerciseSearch" class="input" placeholder="Search exercises..." />
-          <button id="showAddExerciseBtn" class="btn">+ Custom</button>
-        </div>
-      </div>
-
-      <div id="addExercisePanel" class="panel hidden">
-        <h3>New Exercise</h3>
-        <div class="grid2">
-          <input id="exName" class="input" placeholder="Name (e.g., Incline DB Press)" />
-          <input id="exMuscle" class="input" placeholder="Muscle group (Chest)" />
-          <input id="exEquip" class="input" placeholder="Equipment (Dumbbells)" />
-          <input id="exNotes" class="input" placeholder="Notes (optional)" />
+        <div class="row space-between">
+          <div>
+            <h2>Exercises</h2>
+            <div class="muted">Search built-ins or add custom.</div>
+          </div>
+          <button id="addCustomExerciseBtn" class="iconbtn" title="Add custom exercise">＋</button>
         </div>
         <div class="row">
-          <button id="saveExerciseBtn" class="btn">Save</button>
-          <button id="cancelExerciseBtn" class="btn btn-ghost">Cancel</button>
+          <input id="exerciseSearch" class="input" placeholder="Search exercises…" />
         </div>
       </div>
-
       <div id="exercisesList"></div>
     </section>
 
     <!-- HISTORY -->
     <section id="tab-history" class="tabpage hidden">
-      <div class="panel">
-        <h2>History</h2>
-        <div class="help">Completed workouts show here.</div>
-      </div>
-      <div id="historyList"></div>
+      <div id="historyRoot"></div>
     </section>
 
     <!-- SETTINGS -->
     <section id="tab-settings" class="tabpage hidden">
       <div class="panel">
         <h2>Settings</h2>
+
         <div class="row space-between">
           <div>
             <div class="label">Units</div>
@@ -133,11 +122,11 @@
 
         <div class="row space-between">
           <div>
-            <div class="label">Auto-start rest timer after set</div>
-            <div class="muted">Starts the rest timer immediately when you save a set.</div>
+            <div class="label">Auto-start rest after set</div>
+            <div class="muted">Starts timer immediately when you save a set.</div>
           </div>
           <label class="switch">
-            <input id="autoRestToggle" type="checkbox" checked />
+            <input id="autoRestToggle" type="checkbox" />
             <span class="slider"></span>
           </label>
         </div>
@@ -146,27 +135,57 @@
 
         <div class="row space-between">
           <div>
-            <div class="label">Allow “blank weight = baseline”</div>
+            <div class="label">Blank weight uses baseline</div>
             <div class="muted">If weight is empty, uses last weight automatically.</div>
           </div>
           <label class="switch">
-            <input id="blankWeightUsesBaselineToggle" type="checkbox" checked />
+            <input id="blankWeightUsesBaselineToggle" type="checkbox" />
             <span class="slider"></span>
           </label>
         </div>
 
         <hr class="sep" />
 
-        <button id="resetAppBtn" class="btn btn-danger">Reset All Data</button>
-        <div class="help">This clears programs, workouts, history, and custom exercises.</div>
+        <button id="resetAppBtn" class="btn btn-danger">Reset all data</button>
+        <div class="help">Clears programs, workouts, history, and custom exercises.</div>
       </div>
     </section>
   </main>
 
+  <!-- Bottom tab bar -->
+  <nav class="bottombar">
+    <div class="tabs" role="tablist">
+      <button class="tab is-active" data-tab="workout" role="tab">
+        <span class="ico">🏋️</span><span>Workout</span>
+      </button>
+      <button class="tab" data-tab="programs" role="tab">
+        <span class="ico">🗂️</span><span>Programs</span>
+      </button>
+      <button class="tab" data-tab="exercises" role="tab">
+        <span class="ico">➕</span><span>Exercises</span>
+      </button>
+      <button class="tab" data-tab="history" role="tab">
+        <span class="ico">🕘</span><span>History</span>
+      </button>
+      <button class="tab" data-tab="settings" role="tab">
+        <span class="ico">⚙️</span><span>Settings</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- Modal / Bottom Sheet -->
+  <div id="modal" class="modal hidden" aria-hidden="true">
+    <div id="modalBackdrop" class="modal-backdrop"></div>
+    <div class="sheet" role="dialog" aria-modal="true">
+      <div class="sheet-handle"></div>
+      <div id="modalContent"></div>
+    </div>
+  </div>
+
   <script src="./app.js"></script>
   <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('./sw.js');
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./sw.js");
     }
   </script>
 </body>
