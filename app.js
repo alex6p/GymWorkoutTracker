@@ -75,6 +75,7 @@ const modal = document.getElementById("modal");
 const modalBackdrop = document.getElementById("modalBackdrop");
 const modalContent = document.getElementById("modalContent");
 modalBackdrop.addEventListener("click", closeModal);
+modalBackdrop.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
 
 // ---------- state ----------
 function DEFAULT_STATE() {
