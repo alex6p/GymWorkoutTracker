@@ -148,6 +148,9 @@ select{ flex:1; min-width: 240px; }
   position:relative;
   width: min(320px, 86vw);
   height: 100%;
+  overflow: auto;
+-webkit-overflow-scrolling: touch;
+max-height: 100vh;
   background: linear-gradient(180deg, rgba(23,26,42,.98), rgba(18,20,32,.94));
   border-right: 1px solid var(--border);
   box-shadow: var(--shadow);
