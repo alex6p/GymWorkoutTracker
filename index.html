@@ -13,19 +13,41 @@
 </head>
 
 <body>
-  <!-- Top header (simple, modern) -->
   <header class="topbar">
-    <div class="brandrow">
-      <div>
-        <div class="brand">Gym Tracker</div>
-        <div class="subbrand">Log fast • Rest timer • History</div>
-      </div>
-      <div id="headerPill" class="pill hidden"></div>
+    <button id="menuBtn" class="iconbtn" aria-label="Menu" title="Menu">☰</button>
+
+    <div class="titlewrap">
+      <div class="brand">Gym Tracker</div>
+      <div id="routeLabel" class="subbrand">Start workout</div>
     </div>
+
+    <div id="headerPill" class="pill hidden">Active</div>
   </header>
 
+  <!-- Drawer -->
+  <aside id="drawer" class="drawer hidden" aria-hidden="true">
+    <div id="drawerBackdrop" class="drawer-backdrop"></div>
+    <div class="drawer-panel">
+      <div class="drawer-head">
+        <div>
+          <div class="drawer-title">Menu</div>
+          <div class="drawer-sub">Keep it simple.</div>
+        </div>
+        <button id="drawerClose" class="iconbtn" aria-label="Close">✕</button>
+      </div>
+
+      <nav class="drawer-nav">
+        <button class="navitem is-active" data-route="workout">🏋️ Start workout</button>
+        <button class="navitem" data-route="programs">🗂️ Programs</button>
+        <button class="navitem" data-route="history">🕘 History</button>
+        <button class="navitem" data-route="settings">⚙️ Settings</button>
+      </nav>
+    </div>
+  </aside>
+
   <main class="container">
-    <!-- Rest timer pill -->
+
+    <!-- Rest timer -->
     <section id="timerBar" class="timerbar hidden" aria-live="polite">
       <div class="timerbar-row">
         <div>
@@ -43,12 +65,12 @@
       </div>
     </section>
 
-    <!-- WORKOUT -->
-    <section id="tab-workout" class="tabpage">
+    <!-- ROUTE: WORKOUT -->
+    <section id="route-workout" class="route">
       <div id="workoutStart" class="panel">
         <div class="panelhead">
           <h2>Start workout</h2>
-          <div class="muted">Pick a template you created in Programs.</div>
+          <div class="muted">Pick a template from your Programs.</div>
         </div>
 
         <div class="row">
@@ -56,9 +78,7 @@
           <button id="startWorkoutBtn" class="btn">Start</button>
         </div>
 
-        <div class="help">
-          No templates yet? Go to <b>Programs</b> → create a program → add a workout → add exercises.
-        </div>
+        <div class="help">Tip: Programs → create workout → add exercises.</div>
       </div>
 
       <section id="activeWorkout" class="panel hidden">
@@ -67,7 +87,6 @@
             <h2 id="activeTitle">Workout</h2>
             <div id="activeMeta" class="muted"></div>
           </div>
-
           <button id="endWorkoutBtn" class="btn btn-danger">Finish</button>
         </div>
 
@@ -75,42 +94,25 @@
       </section>
     </section>
 
-    <!-- PROGRAMS -->
-    <section id="tab-programs" class="tabpage hidden">
+    <!-- ROUTE: PROGRAMS -->
+    <section id="route-programs" class="route hidden">
       <div id="programsRoot"></div>
     </section>
 
-    <!-- EXERCISES -->
-    <section id="tab-exercises" class="tabpage hidden">
-      <div class="panel">
-        <div class="row space-between">
-          <div>
-            <h2>Exercises</h2>
-            <div class="muted">Search built-ins or add custom.</div>
-          </div>
-          <button id="addCustomExerciseBtn" class="iconbtn" title="Add custom exercise">＋</button>
-        </div>
-        <div class="row">
-          <input id="exerciseSearch" class="input" placeholder="Search exercises…" />
-        </div>
-      </div>
-      <div id="exercisesList"></div>
-    </section>
-
-    <!-- HISTORY -->
-    <section id="tab-history" class="tabpage hidden">
+    <!-- ROUTE: HISTORY -->
+    <section id="route-history" class="route hidden">
       <div id="historyRoot"></div>
     </section>
 
-    <!-- SETTINGS -->
-    <section id="tab-settings" class="tabpage hidden">
+    <!-- ROUTE: SETTINGS -->
+    <section id="route-settings" class="route hidden">
       <div class="panel">
         <h2>Settings</h2>
 
         <div class="row space-between">
           <div>
             <div class="label">Units</div>
-            <div class="muted">Default is pounds (lb). Toggle to use kg.</div>
+            <div class="muted">Default is lb. Toggle to kg.</div>
           </div>
           <label class="switch">
             <input id="unitsToggle" type="checkbox" />
@@ -123,7 +125,7 @@
         <div class="row space-between">
           <div>
             <div class="label">Auto-start rest after set</div>
-            <div class="muted">Starts timer immediately when you save a set.</div>
+            <div class="muted">Starts timer after saving a set.</div>
           </div>
           <label class="switch">
             <input id="autoRestToggle" type="checkbox" />
@@ -136,12 +138,24 @@
         <div class="row space-between">
           <div>
             <div class="label">Blank weight uses baseline</div>
-            <div class="muted">If weight is empty, uses last weight automatically.</div>
+            <div class="muted">If weight is empty, uses last weight.</div>
           </div>
           <label class="switch">
             <input id="blankWeightUsesBaselineToggle" type="checkbox" />
             <span class="slider"></span>
           </label>
+        </div>
+
+        <hr class="sep" />
+
+        <div id="customExercisesPanel" class="card">
+          <div class="row space-between">
+            <div>
+              <div class="label">Custom exercises</div>
+              <div class="muted">Delete ones you don’t need.</div>
+            </div>
+          </div>
+          <div id="customExercisesList" class="list"></div>
         </div>
 
         <hr class="sep" />
@@ -152,28 +166,7 @@
     </section>
   </main>
 
-  <!-- Bottom tab bar -->
-  <nav class="bottombar">
-    <div class="tabs" role="tablist">
-      <button class="tab is-active" data-tab="workout" role="tab">
-        <span class="ico">🏋️</span><span>Workout</span>
-      </button>
-      <button class="tab" data-tab="programs" role="tab">
-        <span class="ico">🗂️</span><span>Programs</span>
-      </button>
-      <button class="tab" data-tab="exercises" role="tab">
-        <span class="ico">➕</span><span>Exercises</span>
-      </button>
-      <button class="tab" data-tab="history" role="tab">
-        <span class="ico">🕘</span><span>History</span>
-      </button>
-      <button class="tab" data-tab="settings" role="tab">
-        <span class="ico">⚙️</span><span>Settings</span>
-      </button>
-    </div>
-  </nav>
-
-  <!-- Modal / Bottom Sheet -->
+  <!-- Bottom Sheet Modal -->
   <div id="modal" class="modal hidden" aria-hidden="true">
     <div id="modalBackdrop" class="modal-backdrop"></div>
     <div class="sheet" role="dialog" aria-modal="true">
