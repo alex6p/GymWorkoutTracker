@@ -184,10 +184,13 @@ function fmtCountdown(seconds) {
   const s = seconds % 60;
   return `${m}:${String(s).padStart(2,"0")}`;
 }
+const toastEl = document.getElementById("toast");
+
 function toast(msg) {
-  headerPill.textContent = msg;
-  headerPill.classList.remove("hidden");
-  setTimeout(() => headerPill.classList.add("hidden"), 1700);
+  toastEl.textContent = msg;
+  toastEl.classList.remove("hidden");
+  clearTimeout(toastEl._t);
+  toastEl._t = setTimeout(() => toastEl.classList.add("hidden"), 1800);
 }
 
 function el(tag, cls) {
