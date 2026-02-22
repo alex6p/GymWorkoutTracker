@@ -470,7 +470,20 @@ function deleteCustomExercise(exId) {
   renderSettingsRoute();
   toast("Deleted");
 }
+let _scrollY = 0;
 
+function lockBodyScroll(){
+  _scrollY = window.scrollY || 0;
+  document.body.classList.add("modal-open");
+  document.body.style.top = `-${_scrollY}px`;
+}
+
+function unlockBodyScroll(){
+  document.body.classList.remove("modal-open");
+  const y = _scrollY;
+  document.body.style.top = "";
+  window.scrollTo(0, y);
+}
 function openModal(html, kind = "") {
   modalContent.innerHTML = html;
   modal.classList.remove("hidden");
