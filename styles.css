@@ -394,3 +394,14 @@ max-height: 100vh;
   overscroll-behavior: contain;
   touch-action: pan-y;
 }
+/* Prevent scrolling the page behind modals (iOS fix) */
+body.modal-open{
+  position: fixed;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Make sure modal captures touches */
+.modal, .modal-backdrop, .sheet{
+  pointer-events: auto;
+}
