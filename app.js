@@ -577,20 +577,20 @@ function openBulkExercisePicker(workoutId) {
 
   const renderList = () => {
    const raw = (mSearch.value || "").trim();
-left.appendChild(txt("div","label", `Create "${raw}"`));
+const q = raw.toLowerCase();
 const filtered = all.filter(ex => !q || ex.name.toLowerCase().includes(q));
-   // If no results, show "Create <search>" quick action
+
+mList.innerHTML = "";
 if (filtered.length === 0 && raw.length >= 3) {
   const row = el("div","listrow");
   const left = el("div");
-  left.appendChild(txt("div","label", `Create "${mSearch.value.trim()}"`));
+  left.appendChild(txt("div","label", `Create "${raw}"`));
   left.appendChild(txt("div","muted", "Add as a new custom exercise"));
   row.appendChild(left);
 
   row.appendChild(iconBtn("＋", "Create", () => {
     openCustomExerciseModal(() => {
-      // After create, refresh list and auto-select the new exercise by name
-      const createdName = mSearch.value.trim().toLowerCase();
+      const createdName = raw.toLowerCase();
       const newest = state.exercises
         .slice()
         .reverse()
@@ -599,14 +599,14 @@ if (filtered.length === 0 && raw.length >= 3) {
       all.splice(0, all.length, ...state.exercises.slice().sort((a,b)=>a.name.localeCompare(b.name)));
       if (newest) selected.add(newest.id);
       renderList();
-    }, mSearch.value.trim());
+    }, raw);
   }));
 
   mList.appendChild(row);
   mCount.textContent = `${selected.size} selected`;
   return;
 }
-    mList.innerHTML = "";
+
     for (const ex of filtered) {
       const row = el("div","listrow");
       const left = el("div");
