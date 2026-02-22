@@ -576,10 +576,11 @@ function openBulkExercisePicker(workoutId) {
   mCancel.onclick = closeModal;
 
   const renderList = () => {
-    const q = (mSearch.value || "").trim().toLowerCase();
-    const filtered = all.filter(ex => !q || ex.name.toLowerCase().includes(q));
+   const raw = (mSearch.value || "").trim();
+left.appendChild(txt("div","label", `Create "${raw}"`));
+const filtered = all.filter(ex => !q || ex.name.toLowerCase().includes(q));
    // If no results, show "Create <search>" quick action
-if (filtered.length === 0 && q) {
+if (filtered.length === 0 && raw.length >= 3) {
   const row = el("div","listrow");
   const left = el("div");
   left.appendChild(txt("div","label", `Create "${mSearch.value.trim()}"`));
