@@ -344,9 +344,10 @@ select{ flex:1; min-width: 240px; }
   max-width: min(92vw, 520px);
   text-align: center;
 }
-/* ===== Exercise picker (stable height + sticky search + scroll list) ===== */
+/* ===== Exercise picker (fixed height so it won't slide behind keyboard) ===== */
 .modal.picker-open .sheet{
   height: min(78vh, calc(100vh - 24px - env(safe-area-inset-top, 0px)));
+  min-height: min(78vh, calc(100vh - 24px - env(safe-area-inset-top, 0px))); /* ✅ prevents shrinking */
   max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px));
   overflow: hidden;
   display: flex;
