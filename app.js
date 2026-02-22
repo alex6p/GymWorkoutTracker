@@ -471,13 +471,10 @@ function deleteCustomExercise(exId) {
   toast("Deleted");
 }
 
-// ---------- modal helpers ----------
 function openModal(html, kind = "") {
   modalContent.innerHTML = html;
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden","false");
-
-  // enable picker layout only when requested
   modal.classList.toggle("picker-open", kind === "picker");
 }
 
