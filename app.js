@@ -1,30 +1,31 @@
-/* Gym Tracker PWA v4
-   - No "Programs"
-   - Only "Workouts" (saved templates)
-   - Hamburger menu routes
-   - Add exercises inside workout builder (multi-select + create custom)
-   - Rest timer auto-start after set (per-exercise rest)
-   - Baseline last weight/reps
+/* Gym Tracker PWA v5
+   - Workouts is the home screen
+   - Each workout card has Start + Edit
+   - Create new workout from the same screen
+   - Active workout shows on top when running
 */
 
-const LS_KEY = "gym_tracker_v4";
-const LEGACY_KEYS = ["gym_tracker_v3", "gym_tracker_v2", "gym_tracker_v1"];
+const LS_KEY = "gym_tracker_v5";
+const LEGACY_KEYS = ["gym_tracker_v4","gym_tracker_v3","gym_tracker_v2","gym_tracker_v1"];
 
 let state = loadState();
-let route = "workout";
+let route = "workouts";
 
 const ui = {
   workouts: { screen: "list", workoutId: null },
   history: { screen: "list", sessionId: null }
 };
-function escapeHtml(s){
-  return String(s ?? "")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;")
-    .replace(/'/g,"&#039;");
+
+// ---------- optional toast ----------
+const toastEl = document.getElementById("toast") || null;
+function toast(msg){
+  if (!toastEl) { console.log(msg); return; }
+  toastEl.textContent = msg;
+  toastEl.classList.remove("hidden");
+  clearTimeout(toastEl._t);
+  toastEl._t = setTimeout(() => toastEl.classList.add("hidden"), 1800);
 }
+
 // ---------- DOM ----------
 const drawer = document.getElementById("drawer");
 const drawerBackdrop = document.getElementById("drawerBackdrop");
@@ -51,20 +52,12 @@ const timerSub = document.getElementById("timerSub");
 document.getElementById("timerStop").addEventListener("click", () => stopTimer(true));
 document.getElementById("timerPlus").addEventListener("click", () => addTimer(30));
 
-// workout route
-const startWorkoutSelect = document.getElementById("startWorkoutSelect");
-document.getElementById("startWorkoutBtn").addEventListener("click", () => {
-  const workoutId = startWorkoutSelect.value;
-  if (!workoutId) return toast("Create a workout first (Menu → Workouts).");
-  startWorkout(workoutId);
-});
-document.getElementById("endWorkoutBtn").addEventListener("click", finishWorkout);
-
-const workoutStart = document.getElementById("workoutStart");
+// active workout panel (now lives on Workouts/home)
 const activeWorkout = document.getElementById("activeWorkout");
 const activeTitle = document.getElementById("activeTitle");
 const activeMeta = document.getElementById("activeMeta");
 const activeExercises = document.getElementById("activeExercises");
+document.getElementById("endWorkoutBtn").addEventListener("click", finishWorkout);
 
 // roots
 const workoutsRoot = document.getElementById("workoutsRoot");
@@ -86,13 +79,9 @@ modalBackdrop.addEventListener("click", closeModal);
 // ---------- state ----------
 function DEFAULT_STATE() {
   return {
-    settings: {
-      isKg: false,
-      autoRest: true,
-      blankWeightUsesBaseline: true
-    },
+    settings: { isKg:false, autoRest:true, blankWeightUsesBaseline:true },
     exercises: seedExercises(),
-    workouts: [],         // <-- saved templates
+    workouts: [],         // saved templates
     sessions: [],         // history
     activeSessionId: null,
     timer: { running:false, total:0, remaining:0, endTs:null, label:"" }
@@ -120,29 +109,11 @@ function ex(name, muscleGroup, equipment) {
 }
 
 function saveState() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
-function loadState() {
-  const raw = localStorage.getItem(LS_KEY);
-  if (raw) {
-    try { return { ...DEFAULT_STATE(), ...JSON.parse(raw) }; } catch {}
-  }
-  for (const k of LEGACY_KEYS) {
-    const legacy = localStorage.getItem(k);
-    if (legacy) {
-      try {
-        const migrated = migrateLegacy(JSON.parse(legacy));
-        localStorage.setItem(LS_KEY, JSON.stringify(migrated));
-        return migrated;
-      } catch {}
-    }
-  }
-  return DEFAULT_STATE();
-}
 
-// migrate from older versions that used programs/templates
 function migrateLegacy(old) {
   const s = { ...DEFAULT_STATE(), ...old };
 
-  // If older had programs -> flatten workouts into s.workouts
+  // If older had programs -> flatten workouts
   if (!s.workouts?.length && Array.isArray(s.programs)) {
     const flattened = [];
     for (const p of s.programs) {
@@ -165,6 +136,24 @@ function migrateLegacy(old) {
 
   delete s.programs;
   return s;
+}
+
+function loadState() {
+  const raw = localStorage.getItem(LS_KEY);
+  if (raw) {
+    try { return { ...DEFAULT_STATE(), ...JSON.parse(raw) }; } catch {}
+  }
+  for (const k of LEGACY_KEYS) {
+    const legacy = localStorage.getItem(k);
+    if (legacy) {
+      try {
+        const migrated = migrateLegacy(JSON.parse(legacy));
+        localStorage.setItem(LS_KEY, JSON.stringify(migrated));
+        return migrated;
+      } catch {}
+    }
+  }
+  return DEFAULT_STATE();
 }
 
 // ---------- utils ----------
@@ -191,15 +180,6 @@ function fmtCountdown(seconds) {
   const s = seconds % 60;
   return `${m}:${String(s).padStart(2,"0")}`;
 }
-const toastEl = document.getElementById("toast");
-
-function toast(msg) {
-  toastEl.textContent = msg;
-  toastEl.classList.remove("hidden");
-  clearTimeout(toastEl._t);
-  toastEl._t = setTimeout(() => toastEl.classList.add("hidden"), 1800);
-}
-
 function el(tag, cls) {
   const n = document.createElement(tag);
   if (cls) n.className = cls;
@@ -240,12 +220,10 @@ function setRoute(r) {
   if (active) active.classList.remove("hidden");
 
   routeLabel.textContent =
-    r === "workout" ? "Start workout" :
     r === "workouts" ? "Workouts" :
     r === "history" ? "History" :
     "Settings";
 
-  // reset sub nav
   if (r !== "workouts") ui.workouts = { screen:"list", workoutId:null };
   if (r !== "history") ui.history = { screen:"list", sessionId:null };
 
@@ -260,7 +238,7 @@ function lastSetForExercise(exerciseId) {
       if (se.exerciseId !== exerciseId) continue;
       if (!se.sets?.length) continue;
       const last = [...se.sets].sort((a,b)=>b.createdAt-a.createdAt)[0];
-      return { reps: last.reps, weightLb: last.weightLb, date: last.createdAt };
+      return { reps:last.reps, weightLb:last.weightLb, date:last.createdAt };
     }
   }
   return null;
@@ -324,13 +302,14 @@ function addTimer(seconds) {
   tickTimer();
 }
 
-// ---------- workout sessions ----------
+// ---------- sessions ----------
 function getActiveSession() {
   if (!state.activeSessionId) return null;
   return state.sessions.find(s => s.id === state.activeSessionId) || null;
 }
 
 function startWorkout(workoutId) {
+  if (getActiveSession()) return toast("Finish your current workout first.");
   const w = workoutById(workoutId);
   if (!w) return toast("Workout not found.");
 
@@ -400,7 +379,7 @@ function addSetToSessionExercise(sessionExerciseId, reps, weightDisplay) {
   });
 
   saveState();
-  renderWorkoutRoute();
+  renderActiveWorkout();
 
   if (state.settings.autoRest) {
     startTimer(se.restSeconds || 90, `Next set • ${exerciseName(se.exerciseId)}`);
@@ -415,7 +394,7 @@ function createWorkout(name) {
   saveState();
   toast("Workout created");
   ui.workouts = { screen:"detail", workoutId: state.workouts[state.workouts.length - 1].id };
-  renderWorkoutsRoute();
+  renderWorkoutsHome();
 }
 
 function deleteWorkout(workoutId) {
@@ -425,25 +404,21 @@ function deleteWorkout(workoutId) {
   state.workouts = state.workouts.filter(x => x.id !== workoutId);
   saveState();
   ui.workouts = { screen:"list", workoutId:null };
-  renderAll();
+  renderWorkoutsHome();
 }
 
 function addExercisesBulkToWorkout(workoutId, exerciseIds) {
   const w = workoutById(workoutId);
   if (!w) return;
+
   for (const exId of exerciseIds) {
     if (w.exercises.some(te => te.exerciseId === exId)) continue;
-    w.exercises.push({
-      id: uid(),
-      exerciseId: exId,
-      targetSets: 3,
-      targetReps: 10,
-      restSeconds: 90
-    });
+    w.exercises.push({ id: uid(), exerciseId: exId, targetSets: 3, targetReps: 10, restSeconds: 90 });
   }
+
   saveState();
   toast("Exercises added");
-  renderWorkoutsRoute();
+  renderWorkoutsHome();
 }
 
 function removeWorkoutExercise(workoutId, workoutExerciseId) {
@@ -451,7 +426,7 @@ function removeWorkoutExercise(workoutId, workoutExerciseId) {
   if (!w) return;
   w.exercises = w.exercises.filter(te => te.id !== workoutExerciseId);
   saveState();
-  renderWorkoutsRoute();
+  renderWorkoutsHome();
 }
 
 function updateWorkoutExercise(workoutId, workoutExerciseId, sets, reps, rest) {
@@ -463,7 +438,7 @@ function updateWorkoutExercise(workoutId, workoutExerciseId, sets, reps, rest) {
   te.restSeconds = Number(rest) || te.restSeconds;
   saveState();
   toast("Updated");
-  renderWorkoutsRoute();
+  renderWorkoutsHome();
 }
 
 // ---------- custom exercises ----------
@@ -496,20 +471,16 @@ function deleteCustomExercise(exId) {
   toast("Deleted");
 }
 
-function openModal(html, kind = "") {
+// ---------- modal helpers ----------
+function openModal(html) {
   modalContent.innerHTML = html;
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden","false");
-
-  // toggle "picker-open" styling only when needed
-  modal.classList.toggle("picker-open", kind === "picker");
 }
-
 function closeModal() {
   modal.classList.add("hidden");
   modal.setAttribute("aria-hidden","true");
   modalContent.innerHTML = "";
-  modal.classList.remove("picker-open");
 }
 
 function openNewWorkoutModal() {
@@ -539,12 +510,10 @@ function openNewWorkoutModal() {
 }
 
 function openBulkExercisePicker(workoutId) {
-  // Inspired by Hevy’s “Add exercise from library” flow while building a routine. :contentReference[oaicite:1]{index=1}
   const all = state.exercises.slice().sort((a,b)=>a.name.localeCompare(b.name));
   const selected = new Set();
 
- openModal(`
-  <div class="picker-top">
+  openModal(`
     <div class="sheethead">
       <div>
         <div class="sheettitle">Add exercises</div>
@@ -557,18 +526,17 @@ function openBulkExercisePicker(workoutId) {
       <input id="mSearch" class="input" placeholder="Search…" />
       <button class="iconbtn" id="mNewCustom" title="New custom">＋</button>
     </div>
-  </div>
 
-  <div id="mList" class="list picker-list"></div>
+    <div id="mList" class="list"></div>
 
-  <div class="row space-between" style="margin-top:12px">
-    <div class="muted" id="mCount">0 selected</div>
-    <div class="row">
-      <button class="btn btn-ghost" id="mCancel">Cancel</button>
-      <button class="btn" id="mAddBtn">Add</button>
+    <div class="row space-between" style="margin-top:12px">
+      <div class="muted" id="mCount">0 selected</div>
+      <div class="row">
+        <button class="btn btn-ghost" id="mCancel">Cancel</button>
+        <button class="btn" id="mAddBtn">Add</button>
+      </div>
     </div>
-  </div>
-`, "picker");
+  `);
 
   const mClose = document.getElementById("mClose");
   const mCancel = document.getElementById("mCancel");
@@ -582,36 +550,33 @@ function openBulkExercisePicker(workoutId) {
   mCancel.onclick = closeModal;
 
   const renderList = () => {
-   const raw = (mSearch.value || "").trim();
-const q = raw.toLowerCase();
-const filtered = all.filter(ex => !q || ex.name.toLowerCase().includes(q));
+    const raw = (mSearch.value || "").trim();
+    const q = raw.toLowerCase();
+    const filtered = all.filter(ex => !q || ex.name.toLowerCase().includes(q));
 
-mList.innerHTML = "";
-if (filtered.length === 0 && raw.length >= 3) {
-  const row = el("div","listrow");
-  const left = el("div");
-  left.appendChild(txt("div","label", `Create "${raw}"`));
-  left.appendChild(txt("div","muted", "Add as a new custom exercise"));
-  row.appendChild(left);
+    mList.innerHTML = "";
 
-  row.appendChild(iconBtn("＋", "Create", () => {
-    openCustomExerciseModal(() => {
-      const createdName = raw.toLowerCase();
-      const newest = state.exercises
-        .slice()
-        .reverse()
-        .find(e => e.isCustom && e.name.toLowerCase() === createdName);
+    // “Create …” only when 3+ chars and no results
+    if (filtered.length === 0 && raw.length >= 3) {
+      const row = el("div","listrow");
+      const left = el("div");
+      left.appendChild(txt("div","label", `Create "${raw}"`));
+      left.appendChild(txt("div","muted", "Add as a new custom exercise"));
+      row.appendChild(left);
 
-      all.splice(0, all.length, ...state.exercises.slice().sort((a,b)=>a.name.localeCompare(b.name)));
-      if (newest) selected.add(newest.id);
-      renderList();
-    }, raw);
-  }));
+      row.appendChild(iconBtn("＋","Create", () => {
+        openCustomExerciseModal(() => {
+          all.splice(0, all.length, ...state.exercises.slice().sort((a,b)=>a.name.localeCompare(b.name)));
+          const newest = state.exercises.slice().reverse().find(e => e.isCustom && e.name.toLowerCase() === raw.toLowerCase());
+          if (newest) selected.add(newest.id);
+          renderList();
+        }, raw);
+      }));
 
-  mList.appendChild(row);
-  mCount.textContent = `${selected.size} selected`;
-  return;
-}
+      mList.appendChild(row);
+      mCount.textContent = `${selected.size} selected`;
+      return;
+    }
 
     for (const ex of filtered) {
       const row = el("div","listrow");
@@ -639,19 +604,22 @@ if (filtered.length === 0 && raw.length >= 3) {
       row.appendChild(chk);
       mList.appendChild(row);
     }
+
     mCount.textContent = `${selected.size} selected`;
   };
-let searchT = null;
-mSearch.oninput = () => {
-  clearTimeout(searchT);
-  searchT = setTimeout(renderList, 150);
-};
+
+  // debounce typing
+  let searchT = null;
+  mSearch.oninput = () => {
+    clearTimeout(searchT);
+    searchT = setTimeout(renderList, 150);
+  };
 
   mNewCustom.onclick = () => {
     openCustomExerciseModal(() => {
       all.splice(0, all.length, ...state.exercises.slice().sort((a,b)=>a.name.localeCompare(b.name)));
       renderList();
-    });
+    }, mSearch.value.trim());
   };
 
   mAddBtn.onclick = () => {
@@ -661,6 +629,15 @@ mSearch.oninput = () => {
   };
 
   renderList();
+}
+
+function escapeHtml(s){
+  return String(s ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
 }
 
 function openCustomExerciseModal(onDone, prefillName = "") {
@@ -674,7 +651,7 @@ function openCustomExerciseModal(onDone, prefillName = "") {
     </div>
 
     <div class="grid2">
-      <input id="mName" class="input" placeholder="Name (e.g., Cable Fly)" value="${escapeHtml(prefillName)}" />
+      <input id="mName" class="input" placeholder="Name" value="${escapeHtml(prefillName)}" />
       <input id="mMuscle" class="input" placeholder="Muscle group (Chest)" />
       <input id="mEquip" class="input" placeholder="Equipment (Cable)" />
       <input id="mNotes" class="input" placeholder="Notes (optional)" />
@@ -795,9 +772,8 @@ function openSetModal(sessionExerciseId) {
 // ---------- render ----------
 function renderAll() {
   renderHeader();
-  renderWorkoutSelect();
-  renderWorkoutRoute();
-  renderWorkoutsRoute();
+  renderActiveWorkout();
+  renderWorkoutsHome();
   renderHistoryRoute();
   renderSettingsRoute();
 }
@@ -805,43 +781,28 @@ function renderAll() {
 function renderHeader() {
   const sess = getActiveSession();
   if (sess) {
-    headerPill.textContent = "Active workout";
+    headerPill.textContent = "Active";
     headerPill.classList.remove("hidden");
   } else {
     headerPill.classList.add("hidden");
   }
 }
 
-function renderWorkoutSelect() {
-  startWorkoutSelect.innerHTML = "";
-  const workouts = state.workouts.slice().sort((a,b)=>a.name.localeCompare(b.name));
-
-  const opt0 = document.createElement("option");
-  opt0.value = "";
-  opt0.textContent = workouts.length ? "Select a workout…" : "No workouts yet (create in Menu → Workouts)";
-  startWorkoutSelect.appendChild(opt0);
-
-  for (const w of workouts) {
-    const opt = document.createElement("option");
-    opt.value = w.id;
-    opt.textContent = w.name;
-    startWorkoutSelect.appendChild(opt);
-  }
-}
-
-function renderWorkoutRoute() {
-  if (route !== "workout") return;
-
+function renderActiveWorkout() {
   const sess = getActiveSession();
-  if (!sess) {
-    workoutStart.classList.remove("hidden");
+
+  if (route !== "workouts") {
     activeWorkout.classList.add("hidden");
     return;
   }
 
-  workoutStart.classList.add("hidden");
-  activeWorkout.classList.remove("hidden");
+  if (!sess) {
+    activeWorkout.classList.add("hidden");
+    activeExercises.innerHTML = "";
+    return;
+  }
 
+  activeWorkout.classList.remove("hidden");
   activeTitle.textContent = sess.workoutName || "Workout";
   activeMeta.textContent = `Started ${fmtDateTime(sess.startedAt)}`;
 
@@ -888,25 +849,38 @@ function renderWorkoutRoute() {
   }
 }
 
-function renderWorkoutsRoute() {
+function renderWorkoutsHome() {
   if (route !== "workouts") return;
   workoutsRoot.innerHTML = "";
 
-  // LIST
+  const sess = getActiveSession();
+
+  // If workout is active, keep home clean: show only active panel + small hint
+  if (sess) {
+    const hint = el("div","panel");
+    hint.appendChild(txt("div","label","Workout in progress"));
+    hint.appendChild(txt("div","help","Finish it above, then your workout list will reappear."));
+    workoutsRoot.appendChild(hint);
+    return;
+  }
+
+  // LIST or DETAIL
   if (ui.workouts.screen === "list") {
     const panel = el("div","panel");
     const top = el("div","row space-between");
+
     const left = el("div");
     left.appendChild(txt("h2","", "Workouts"));
-    left.appendChild(txt("div","muted","Create workouts and add exercises."));
+    left.appendChild(txt("div","muted","Tap Start to begin, or › to edit."));
     top.appendChild(left);
+
     top.appendChild(iconBtn("＋","New workout", openNewWorkoutModal));
     panel.appendChild(top);
     workoutsRoot.appendChild(panel);
 
     const workouts = state.workouts.slice().sort((a,b)=>a.name.localeCompare(b.name));
     if (!workouts.length) {
-      workoutsRoot.appendChild(txt("div","panel muted","No workouts yet. Tap + to add one."));
+      workoutsRoot.appendChild(txt("div","panel muted","No workouts yet. Tap + to create one."));
       return;
     }
 
@@ -919,26 +893,11 @@ function renderWorkoutsRoute() {
       l.appendChild(txt("div","muted", `${w.exercises.length} exercise(s)`));
       row.appendChild(l);
 
-      const r = el("div"); r.style.display="flex"; r.style.gap="8px";
-      r.appendChild(iconBtn("›","Open", () => { ui.workouts = { screen:"detail", workoutId:w.id }; renderWorkoutsRoute(); }));
-      r.appendChild(iconBtn("⋯","More", () => {
-        openModal(`
-          <div class="sheethead">
-            <div>
-              <div class="sheettitle">${w.name}</div>
-              <div class="sheetsub">Workout actions</div>
-            </div>
-            <button class="iconbtn" id="mClose">✕</button>
-          </div>
-          <div class="row">
-            <button class="btn btn-danger" id="mDelete">Delete workout</button>
-            <button class="btn btn-ghost" id="mCancel">Cancel</button>
-          </div>
-        `);
-        document.getElementById("mClose").onclick = closeModal;
-        document.getElementById("mCancel").onclick = closeModal;
-        document.getElementById("mDelete").onclick = () => { closeModal(); deleteWorkout(w.id); };
-      }));
+      const r = el("div");
+      r.style.display="flex"; r.style.gap="8px";
+      r.appendChild(iconBtn("▶","Start", () => startWorkout(w.id)));
+      r.appendChild(iconBtn("›","Edit", () => { ui.workouts = { screen:"detail", workoutId:w.id }; renderWorkoutsHome(); }));
+      r.appendChild(iconBtn("🗑","Delete", () => deleteWorkout(w.id)));
       row.appendChild(r);
 
       card.appendChild(row);
@@ -947,10 +906,9 @@ function renderWorkoutsRoute() {
     return;
   }
 
-  // DETAIL / BUILDER
   if (ui.workouts.screen === "detail") {
     const w = workoutById(ui.workouts.workoutId);
-    if (!w) { ui.workouts = { screen:"list", workoutId:null }; return renderWorkoutsRoute(); }
+    if (!w) { ui.workouts = { screen:"list", workoutId:null }; return renderWorkoutsHome(); }
 
     const panel = el("div","panel");
     const top = el("div","row space-between");
@@ -961,8 +919,9 @@ function renderWorkoutsRoute() {
     top.appendChild(l);
 
     const r = el("div"); r.style.display="flex"; r.style.gap="8px";
-    r.appendChild(iconBtn("‹","Back", () => { ui.workouts = { screen:"list", workoutId:null }; renderWorkoutsRoute(); }));
+    r.appendChild(iconBtn("‹","Back", () => { ui.workouts = { screen:"list", workoutId:null }; renderWorkoutsHome(); }));
     r.appendChild(iconBtn("＋","Add exercises", () => openBulkExercisePicker(w.id)));
+    r.appendChild(iconBtn("▶","Start", () => { ui.workouts = { screen:"list", workoutId:null }; startWorkout(w.id); }));
     top.appendChild(r);
 
     panel.appendChild(top);
@@ -976,7 +935,6 @@ function renderWorkoutsRoute() {
       return;
     }
 
-    // Keep the list clean: only one ⋯ button per exercise (edit/remove inside sheet)
     for (const te of w.exercises.slice()) {
       const card = el("div","card");
       const row = el("div","row space-between");
@@ -1106,12 +1064,8 @@ function resetAllData() {
 }
 
 // ---------- boot ----------
-function renderAllSafe() {
-  try { renderAll(); } catch (e) { console.error(e); toast("UI error (console)"); }
-}
-
-renderAllSafe();
-setRoute("workout");
+renderAll();
+setRoute("workouts");
 
 // restore timer if running
 if (state.timer.running && state.timer.endTs) {
