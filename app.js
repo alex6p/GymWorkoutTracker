@@ -17,7 +17,14 @@ const ui = {
   workouts: { screen: "list", workoutId: null },
   history: { screen: "list", sessionId: null }
 };
-
+function escapeHtml(s){
+  return String(s ?? "")
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#039;");
+}
 // ---------- DOM ----------
 const drawer = document.getElementById("drawer");
 const drawerBackdrop = document.getElementById("drawerBackdrop");
@@ -571,7 +578,33 @@ function openBulkExercisePicker(workoutId) {
   const renderList = () => {
     const q = (mSearch.value || "").trim().toLowerCase();
     const filtered = all.filter(ex => !q || ex.name.toLowerCase().includes(q));
+   // If no results, show "Create <search>" quick action
+if (filtered.length === 0 && q) {
+  const row = el("div","listrow");
+  const left = el("div");
+  left.appendChild(txt("div","label", `Create "${mSearch.value.trim()}"`));
+  left.appendChild(txt("div","muted", "Add as a new custom exercise"));
+  row.appendChild(left);
 
+  row.appendChild(iconBtn("＋", "Create", () => {
+    openCustomExerciseModal(() => {
+      // After create, refresh list and auto-select the new exercise by name
+      const createdName = mSearch.value.trim().toLowerCase();
+      const newest = state.exercises
+        .slice()
+        .reverse()
+        .find(e => e.isCustom && e.name.toLowerCase() === createdName);
+
+      all.splice(0, all.length, ...state.exercises.slice().sort((a,b)=>a.name.localeCompare(b.name)));
+      if (newest) selected.add(newest.id);
+      renderList();
+    }, mSearch.value.trim());
+  }));
+
+  mList.appendChild(row);
+  mCount.textContent = `${selected.size} selected`;
+  return;
+}
     mList.innerHTML = "";
     for (const ex of filtered) {
       const row = el("div","listrow");
@@ -620,7 +653,7 @@ function openBulkExercisePicker(workoutId) {
   renderList();
 }
 
-function openCustomExerciseModal(onDone) {
+function openCustomExerciseModal(onDone, prefillName = "") {
   openModal(`
     <div class="sheethead">
       <div>
@@ -631,7 +664,7 @@ function openCustomExerciseModal(onDone) {
     </div>
 
     <div class="grid2">
-      <input id="mName" class="input" placeholder="Name (e.g., Cable Fly)" />
+      <input id="mName" class="input" placeholder="Name (e.g., Cable Fly)" value="${escapeHtml(prefillName)}" />
       <input id="mMuscle" class="input" placeholder="Muscle group (Chest)" />
       <input id="mEquip" class="input" placeholder="Equipment (Cable)" />
       <input id="mNotes" class="input" placeholder="Notes (optional)" />
