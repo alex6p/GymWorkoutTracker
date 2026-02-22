@@ -397,3 +397,30 @@ select{ flex:1; min-width: 240px; }
   -webkit-overflow-scrolling: touch;
   max-height: none;
 }
+/* Always allow scrolling the exercise list */
+.modal.picker-open .picker-list{
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+/* Keep Add/Cancel visible */
+.modal.picker-open .picker-bottom{
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  padding-top: 10px;
+  background: linear-gradient(180deg, rgba(23,26,42,0), rgba(23,26,42,.95));
+}
+
+/* Make sure the sheet is a flex column so the list can take remaining space */
+.modal.picker-open .sheet{
+  display: flex;
+  flex-direction: column;
+  height: min(78vh, calc(100vh - 24px - env(safe-area-inset-top, 0px)));
+  max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px));
+  overflow: hidden;
+}
