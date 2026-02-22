@@ -267,6 +267,10 @@ select{ flex:1; min-width: 240px; }
 .sheet{
   position:relative;
   width: min(860px, 100%);
+  max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px));
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+
   background: linear-gradient(180deg, rgba(23,26,42,.98), rgba(18,20,32,.94));
   border: 1px solid var(--border);
   border-radius: 22px;
@@ -295,7 +299,17 @@ select{ flex:1; min-width: 240px; }
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
-.list{ margin-top:10px; display:flex; flex-direction:column; gap:8px; }
+.list{
+  margin-top:10px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+
+  /* NEW: keeps the picker list from taking over the sheet */
+  max-height: 52vh;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .listrow{
   display:flex;
   align-items:center;
