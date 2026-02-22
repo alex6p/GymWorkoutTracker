@@ -31,14 +31,14 @@
       <div class="drawer-head">
         <div>
           <div class="drawer-title">Menu</div>
-          <div class="drawer-sub">Keep it simple.</div>
+          <div class="drawer-sub">Simple and fast.</div>
         </div>
         <button id="drawerClose" class="iconbtn" aria-label="Close">✕</button>
       </div>
 
       <nav class="drawer-nav">
         <button class="navitem is-active" data-route="workout">🏋️ Start workout</button>
-        <button class="navitem" data-route="programs">🗂️ Programs</button>
+        <button class="navitem" data-route="workouts">🗂️ Workouts</button>
         <button class="navitem" data-route="history">🕘 History</button>
         <button class="navitem" data-route="settings">⚙️ Settings</button>
       </nav>
@@ -46,7 +46,6 @@
   </aside>
 
   <main class="container">
-
     <!-- Rest timer -->
     <section id="timerBar" class="timerbar hidden" aria-live="polite">
       <div class="timerbar-row">
@@ -65,20 +64,20 @@
       </div>
     </section>
 
-    <!-- ROUTE: WORKOUT -->
+    <!-- ROUTE: START WORKOUT -->
     <section id="route-workout" class="route">
       <div id="workoutStart" class="panel">
         <div class="panelhead">
           <h2>Start workout</h2>
-          <div class="muted">Pick a template from your Programs.</div>
+          <div class="muted">Pick one of your saved workouts.</div>
         </div>
 
         <div class="row">
-          <select id="startTemplateSelect"></select>
+          <select id="startWorkoutSelect"></select>
           <button id="startWorkoutBtn" class="btn">Start</button>
         </div>
 
-        <div class="help">Tip: Programs → create workout → add exercises.</div>
+        <div class="help">Create workouts in ☰ Menu → <b>Workouts</b>.</div>
       </div>
 
       <section id="activeWorkout" class="panel hidden">
@@ -94,9 +93,9 @@
       </section>
     </section>
 
-    <!-- ROUTE: PROGRAMS -->
-    <section id="route-programs" class="route hidden">
-      <div id="programsRoot"></div>
+    <!-- ROUTE: WORKOUTS (Manage) -->
+    <section id="route-workouts" class="route hidden">
+      <div id="workoutsRoot"></div>
     </section>
 
     <!-- ROUTE: HISTORY -->
@@ -148,7 +147,7 @@
 
         <hr class="sep" />
 
-        <div id="customExercisesPanel" class="card">
+        <div class="card">
           <div class="row space-between">
             <div>
               <div class="label">Custom exercises</div>
@@ -161,7 +160,7 @@
         <hr class="sep" />
 
         <button id="resetAppBtn" class="btn btn-danger">Reset all data</button>
-        <div class="help">Clears programs, workouts, history, and custom exercises.</div>
+        <div class="help">Clears workouts, history, and custom exercises.</div>
       </div>
     </section>
   </main>
