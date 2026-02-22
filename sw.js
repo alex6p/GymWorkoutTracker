@@ -1,4 +1,4 @@
-const CACHE = "gym-tracker-v1";
+const CACHE = "gym-tracker-v2";
 const ASSETS = [
   "./",
   "./index.html",
@@ -22,7 +22,5 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  event.respondWith(
-    caches.match(event.request).then((cached) => cached || fetch(event.request))
-  );
+  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
 });
