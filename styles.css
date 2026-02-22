@@ -355,18 +355,9 @@ max-height: 100vh;
   padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
 }
 
-/* force a consistent tall sheet (vh fallback + dvh for iOS keyboard) */
 .modal.picker-open .sheet{
-  height: 78vh !important;
-  min-height: 78vh !important;
-
-  /* iOS 16.4+ uses dvh so it respects the keyboard */
   height: 78dvh !important;
   min-height: 78dvh !important;
-
-  max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px)) !important;
-  max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px)) !important;
-
   overflow: hidden !important;
   display: flex !important;
   flex-direction: column !important;
@@ -381,18 +372,21 @@ max-height: 100vh;
   background: linear-gradient(180deg, rgba(23,26,42,.98), rgba(23,26,42,.88));
 }
 
+/* ✅ iOS: force the list to be the scroll container */
 .modal.picker-open .picker-list{
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
 
-  /* ✅ iOS Safari fix: don't scroll a flex container */
-  display: block !important;
-
-  overflow-y: auto;
+  /* key iOS fixes */
+  height: 1px;                 /* forces flexbox to compute a scrollable height */
+  overflow-y: scroll;          /* use scroll instead of auto */
   overflow-x: hidden;
+
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior: contain;
   touch-action: pan-y;
+  overscroll-behavior: contain;
+
+  display: block !important;   /* override .list flex */
 }
 /* Prevent scrolling the page behind modals (iOS fix) */
 body.modal-open{
