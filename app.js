@@ -496,16 +496,20 @@ function deleteCustomExercise(exId) {
   toast("Deleted");
 }
 
-// ---------- modal ----------
-function openModal(html) {
+function openModal(html, kind = "") {
   modalContent.innerHTML = html;
   modal.classList.remove("hidden");
   modal.setAttribute("aria-hidden","false");
+
+  // toggle "picker-open" styling only when needed
+  modal.classList.toggle("picker-open", kind === "picker");
 }
+
 function closeModal() {
   modal.classList.add("hidden");
   modal.setAttribute("aria-hidden","true");
   modalContent.innerHTML = "";
+  modal.classList.remove("picker-open");
 }
 
 function openNewWorkoutModal() {
@@ -539,7 +543,8 @@ function openBulkExercisePicker(workoutId) {
   const all = state.exercises.slice().sort((a,b)=>a.name.localeCompare(b.name));
   const selected = new Set();
 
-  openModal(`
+ openModal(`
+  <div class="picker-top">
     <div class="sheethead">
       <div>
         <div class="sheettitle">Add exercises</div>
@@ -552,17 +557,18 @@ function openBulkExercisePicker(workoutId) {
       <input id="mSearch" class="input" placeholder="Search…" />
       <button class="iconbtn" id="mNewCustom" title="New custom">＋</button>
     </div>
+  </div>
 
-    <div id="mList" class="list"></div>
+  <div id="mList" class="list picker-list"></div>
 
-    <div class="row space-between" style="margin-top:12px">
-      <div class="muted" id="mCount">0 selected</div>
-      <div class="row">
-        <button class="btn btn-ghost" id="mCancel">Cancel</button>
-        <button class="btn" id="mAddBtn">Add</button>
-      </div>
+  <div class="row space-between" style="margin-top:12px">
+    <div class="muted" id="mCount">0 selected</div>
+    <div class="row">
+      <button class="btn btn-ghost" id="mCancel">Cancel</button>
+      <button class="btn" id="mAddBtn">Add</button>
     </div>
-  `);
+  </div>
+`, "picker");
 
   const mClose = document.getElementById("mClose");
   const mCancel = document.getElementById("mCancel");
