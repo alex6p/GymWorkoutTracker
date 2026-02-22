@@ -309,11 +309,7 @@ select{ flex:1; min-width: 240px; }
   flex-direction:column;
   gap:8px;
 
-  /* NEW: keeps the picker list from taking over the sheet */
-  max-height: 52vh;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-}
+
 .listrow{
   display:flex;
   align-items:center;
@@ -348,39 +344,15 @@ select{ flex:1; min-width: 240px; }
   max-width: min(92vw, 520px);
   text-align: center;
 }
-/* ----- Exercise picker: keep search bar fixed above keyboard ----- */
-.modal.picker-open .sheet{
-  height: min(78vh, calc(100vh - 24px - env(safe-area-inset-top, 0px)));
-  overflow: hidden;              /* sheet doesn't shrink/scroll weird */
-  display: flex;
-  flex-direction: column;
-}
-
-.modal.picker-open .picker-top{
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  padding-bottom: 10px;
-  background: linear-gradient(180deg, rgba(23,26,42,.98), rgba(23,26,42,.88));
-}
-
-.modal.picker-open .picker-list{
-  flex: 1;
-  min-height: 0;                 /* important for flex scrolling */
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  max-height: none;              /* overrides earlier max-height */
-}
-/* ===== Exercise Picker keyboard fix ===== */
+/* ===== Exercise picker (stable height + sticky search + scroll list) ===== */
 .modal.picker-open .sheet{
   height: min(78vh, calc(100vh - 24px - env(safe-area-inset-top, 0px)));
   max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px));
-  overflow: hidden;              /* don't let sheet shrink weird */
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-/* Sticky area (title + search) */
 .modal.picker-open .picker-top{
   position: sticky;
   top: 0;
@@ -389,31 +361,10 @@ select{ flex:1; min-width: 240px; }
   background: linear-gradient(180deg, rgba(23,26,42,.98), rgba(23,26,42,.88));
 }
 
-/* Only the list scrolls */
-.modal.picker-open .picker-list{
-  flex: 1;
-  min-height: 0;                 /* critical for flex scrolling */
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  max-height: none;
-}
-/* Always allow scrolling the exercise list */
 .modal.picker-open .picker-list{
   flex: 1;
   min-height: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  touch-action: pan-y;
-}
-
-
-
-/* Make sure the sheet is a flex column so the list can take remaining space */
-.modal.picker-open .sheet{
-  display: flex;
-  flex-direction: column;
-  height: min(78vh, calc(100vh - 24px - env(safe-area-inset-top, 0px)));
-  max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px));
-  overflow: hidden;
 }
