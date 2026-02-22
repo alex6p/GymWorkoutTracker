@@ -13,13 +13,15 @@
 </head>
 
 <body>
+  <!-- toast (optional; keep if you added it) -->
   <div id="toast" class="toast hidden"></div>
+
   <header class="topbar">
     <button id="menuBtn" class="iconbtn" aria-label="Menu" title="Menu">☰</button>
 
     <div class="titlewrap">
       <div class="brand">Gym Tracker</div>
-      <div id="routeLabel" class="subbrand">Start workout</div>
+      <div id="routeLabel" class="subbrand">Workouts</div>
     </div>
 
     <div id="headerPill" class="pill hidden">Active</div>
@@ -38,8 +40,7 @@
       </div>
 
       <nav class="drawer-nav">
-        <button class="navitem is-active" data-route="workout">🏋️ Start workout</button>
-        <button class="navitem" data-route="workouts">🗂️ Workouts</button>
+        <button class="navitem is-active" data-route="workouts">🗂️ Workouts</button>
         <button class="navitem" data-route="history">🕘 History</button>
         <button class="navitem" data-route="settings">⚙️ Settings</button>
       </nav>
@@ -65,22 +66,9 @@
       </div>
     </section>
 
-    <!-- ROUTE: START WORKOUT -->
-    <section id="route-workout" class="route">
-      <div id="workoutStart" class="panel">
-        <div class="panelhead">
-          <h2>Start workout</h2>
-          <div class="muted">Pick one of your saved workouts.</div>
-        </div>
-
-        <div class="row">
-          <select id="startWorkoutSelect"></select>
-          <button id="startWorkoutBtn" class="btn">Start</button>
-        </div>
-
-        <div class="help">Create workouts in ☰ Menu → <b>Workouts</b>.</div>
-      </div>
-
+    <!-- ROUTE: WORKOUTS (Home) -->
+    <section id="route-workouts" class="route">
+      <!-- Active workout panel (shown only when a session is running) -->
       <section id="activeWorkout" class="panel hidden">
         <div class="row space-between">
           <div>
@@ -89,13 +77,10 @@
           </div>
           <button id="endWorkoutBtn" class="btn btn-danger">Finish</button>
         </div>
-
         <div id="activeExercises"></div>
       </section>
-    </section>
 
-    <!-- ROUTE: WORKOUTS (Manage) -->
-    <section id="route-workouts" class="route hidden">
+      <!-- Workouts screens render here -->
       <div id="workoutsRoot"></div>
     </section>
 
