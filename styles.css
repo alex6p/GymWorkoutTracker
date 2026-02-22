@@ -344,16 +344,23 @@ select{ flex:1; min-width: 240px; }
   max-width: min(92vw, 520px);
   text-align: center;
 }
-/* ===== Exercise picker (fixed height so it won't slide behind keyboard) ===== */
-.modal.picker-open .sheet{
-  height: min(78vh, calc(100vh - 24px - env(safe-area-inset-top, 0px)));
-  min-height: min(78vh, calc(100vh - 24px - env(safe-area-inset-top, 0px))); /* ✅ prevents shrinking */
-  max-height: calc(100vh - 24px - env(safe-area-inset-top, 0px));
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+/* ===== Exercise picker: fixed height that respects iOS keyboard ===== */
+.modal.picker-open{
+  align-items: flex-end;
 }
 
+/* Force sheet to stay tall even with few results */
+.modal.picker-open .sheet{
+  height: 78dvh !important;
+  min-height: 78dvh !important;
+  max-height: calc(100dvh - 24px - env(safe-area-inset-top, 0px)) !important;
+
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+/* Keep header/search pinned */
 .modal.picker-open .picker-top{
   position: sticky;
   top: 0;
@@ -362,6 +369,7 @@ select{ flex:1; min-width: 240px; }
   background: linear-gradient(180deg, rgba(23,26,42,.98), rgba(23,26,42,.88));
 }
 
+/* Make list the scroll area */
 .modal.picker-open .picker-list{
   flex: 1;
   min-height: 0;
