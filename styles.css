@@ -313,3 +313,20 @@ select{ flex:1; min-width: 240px; }
   .input{ min-width: 160px; }
   .grid2{ grid-template-columns: 1fr; }
 }
+.toast{
+  position: fixed;
+  top: calc(env(safe-area-inset-top, 0px) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  padding: 10px 12px;
+  border-radius: 999px;
+  background: rgba(0,0,0,.78);
+  border: 1px solid rgba(255,255,255,.10);
+  color: var(--text);
+  font-weight: 900;
+  font-size: 13px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.45);
+  max-width: min(92vw, 520px);
+  text-align: center;
+}
