@@ -407,14 +407,7 @@ select{ flex:1; min-width: 240px; }
   touch-action: pan-y;
 }
 
-/* Keep Add/Cancel visible */
-.modal.picker-open .picker-bottom{
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-  padding-top: 10px;
-  background: linear-gradient(180deg, rgba(23,26,42,0), rgba(23,26,42,.95));
-}
+
 
 /* Make sure the sheet is a flex column so the list can take remaining space */
 .modal.picker-open .sheet{
