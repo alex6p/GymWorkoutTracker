@@ -536,6 +536,16 @@ function openBulkExercisePicker(workoutId) {
 
   <div id="mList" class="list picker-list"></div>
 
+  <div class="picker-bottom">
+  <div class="row space-between">
+    <div class="muted" id="mCount">0 selected</div>
+    <div class="row">
+      <button class="btn btn-ghost" id="mCancel">Cancel</button>
+      <button class="btn" id="mAddBtn">Add</button>
+    </div>
+  </div>
+</div>
+
   <div class="row space-between" style="margin-top:12px">
     <div class="muted" id="mCount">0 selected</div>
     <div class="row">
