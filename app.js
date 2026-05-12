@@ -338,9 +338,16 @@ function tickTimer(){
   els.timerProgress.style.width = `${Math.max(0, Math.min(100, pct))}%`;
   if (remaining <= 0) {
     stopTimer(true);
-    try { navigator.vibrate?.([180,80,180]); } catch {}
+    notifyRestComplete();
     toast("Rest complete");
   }
+}
+function notifyRestComplete(){
+  try {
+    if (navigator.vibrate) {
+      navigator.vibrate([450,140,450,140,700]);
+    }
+  } catch {}
 }
 function addTimer(seconds){
   if (!state.timer.running || !state.timer.endTs) return;
@@ -708,6 +715,10 @@ function renderAll(){
 }
 function renderHeader(){
   const sess = getActiveSession();
+  els.routeLabel.textContent = sess && route === "workouts" ? "" :
+    route === "workouts" ? "Routines" :
+    route === "history" ? "History" :
+    "Settings";
   els.headerPill.classList.toggle("hidden", !sess);
   if (sess) els.headerPill.textContent = fmtDuration(Date.now() - sess.startedAt);
 }
