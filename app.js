@@ -679,17 +679,19 @@ function deleteCustomExercise(exerciseId){
 }
 
 let scrollY = 0;
-function openModal(html){
+function openModal(html, mode = ""){
   scrollY = window.scrollY || 0;
   document.body.classList.add("modal-open");
   document.body.style.top = `-${scrollY}px`;
   els.modalContent.innerHTML = html;
   els.modal.classList.remove("hidden");
   els.modal.setAttribute("aria-hidden","false");
+  els.modal.classList.toggle("picker-modal", mode === "picker");
 }
 function closeModal(){
   els.modal.classList.add("hidden");
   els.modal.setAttribute("aria-hidden","true");
+  els.modal.classList.remove("picker-modal");
   els.modalContent.innerHTML = "";
   document.body.classList.remove("modal-open");
   document.body.style.top = "";
@@ -744,20 +746,22 @@ function openCustomExerciseModal(onDone, prefillName = ""){
 function openExercisePicker(workoutId){
   const selected = new Set();
   openModal(`
-    <div class="sheethead">
-      <div><div class="sheettitle">Add Exercises</div><div class="sheetsub">Select one or more exercises.</div></div>
-      <button class="iconbtn" id="mClose">Close</button>
+    <div class="picker-top">
+      <div class="sheethead">
+        <div><div class="sheettitle">Add Exercises</div><div class="sheetsub">Select one or more exercises.</div></div>
+        <button class="iconbtn" id="mClose">Close</button>
+      </div>
+      <div class="search-row">
+        <input id="mSearch" class="input" placeholder="Search exercises" />
+        <button class="btn secondary" id="mNew">New</button>
+      </div>
     </div>
-    <div class="search-row">
-      <input id="mSearch" class="input" placeholder="Search exercises" />
-      <button class="btn secondary" id="mNew">New</button>
-    </div>
-    <div id="mList" class="list"></div>
-    <div class="row-between" style="margin-top:12px">
+    <div id="mList" class="list picker-list"></div>
+    <div class="row-between picker-footer">
       <div class="muted" id="mCount">0 selected</div>
       <button class="btn" id="mAdd">Add selected</button>
     </div>
-  `);
+  `, "picker");
   const render = () => {
     const q = $("mSearch").value.trim().toLowerCase();
     const list = $("mList");

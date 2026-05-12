@@ -366,6 +366,39 @@ h3{font-size:16px}
 .sheetsub{color:var(--muted);font-size:13px;margin-top:3px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .search-row{display:flex;gap:10px;margin-bottom:10px}
+.modal.picker-modal{
+  align-items:flex-end;
+  padding-bottom:calc(12px + env(safe-area-inset-bottom, 0px));
+}
+.modal.picker-modal .sheet{
+  height:78dvh;
+  min-height:420px;
+  max-height:calc(100dvh - 24px - env(safe-area-inset-top, 0px));
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.picker-top{
+  flex:0 0 auto;
+  background:#181c21;
+  padding-bottom:2px;
+}
+.picker-list{
+  flex:1 1 auto;
+  min-height:0;
+  overflow-y:auto;
+  overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  overscroll-behavior:contain;
+  padding-right:2px;
+}
+.picker-footer{
+  flex:0 0 auto;
+  margin-top:12px;
+  padding-top:10px;
+  border-top:1px solid var(--line);
+  background:#181c21;
+}
 .toast{
   position:fixed;
   left:50%;
@@ -392,6 +425,7 @@ body.modal-open{position:fixed;width:100%;overflow:hidden}
   .routine-actions,.timer-right,.active-exercise-controls{justify-content:flex-start}
   .field.compact{width:100%}
   .grid2,.search-row{grid-template-columns:1fr;display:grid}
+  .modal.picker-modal .sheet{height:82dvh;min-height:0}
   .set-table th:nth-child(2),.set-table td:nth-child(2){display:none}
   h1{font-size:24px}
 }
