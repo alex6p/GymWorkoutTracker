@@ -3,155 +3,120 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Gym Tracker</title>
-
+  <title>Lift Log</title>
   <link rel="manifest" href="./manifest.webmanifest" />
-  <meta name="theme-color" content="#0b0c10" />
+  <meta name="theme-color" content="#101214" />
   <link rel="apple-touch-icon" href="./icons/icon-192.png" />
-
   <link rel="stylesheet" href="./styles.css" />
 </head>
-
 <body>
-  <!-- toast (optional; keep if you added it) -->
   <div id="toast" class="toast hidden"></div>
 
   <header class="topbar">
-    <button id="menuBtn" class="iconbtn" aria-label="Menu" title="Menu">☰</button>
-
+    <button id="menuBtn" class="iconbtn" aria-label="Menu" title="Menu">Menu</button>
     <div class="titlewrap">
-      <div class="brand">Gym Tracker</div>
-      <div id="routeLabel" class="subbrand">Workouts</div>
+      <div class="brand">Lift Log</div>
+      <div id="routeLabel" class="subbrand">Routines</div>
     </div>
-
     <div id="headerPill" class="pill hidden">Active</div>
   </header>
 
-  <!-- Drawer -->
   <aside id="drawer" class="drawer hidden" aria-hidden="true">
     <div id="drawerBackdrop" class="drawer-backdrop"></div>
     <div class="drawer-panel">
       <div class="drawer-head">
         <div>
-          <div class="drawer-title">Menu</div>
-          <div class="drawer-sub">Simple and fast.</div>
+          <div class="drawer-title">Lift Log</div>
+          <div class="drawer-sub">Plan, log, progress.</div>
         </div>
-        <button id="drawerClose" class="iconbtn" aria-label="Close">✕</button>
+        <button id="drawerClose" class="iconbtn" aria-label="Close">Close</button>
       </div>
-
       <nav class="drawer-nav">
-        <button class="navitem is-active" data-route="workouts">🗂️ Workouts</button>
-        <button class="navitem" data-route="history">🕘 History</button>
-        <button class="navitem" data-route="settings">⚙️ Settings</button>
+        <button class="navitem is-active" data-route="workouts">Routines</button>
+        <button class="navitem" data-route="history">History</button>
+        <button class="navitem" data-route="settings">Settings</button>
       </nav>
     </div>
   </aside>
 
   <main class="container">
-    <!-- Rest timer -->
     <section id="timerBar" class="timerbar hidden" aria-live="polite">
       <div class="timerbar-row">
         <div>
-          <div class="timer-title">Rest</div>
-          <div id="timerSub" class="timer-sub">—</div>
+          <div class="timer-title">Rest Timer</div>
+          <div id="timerSub" class="timer-sub">Ready for the next set</div>
         </div>
         <div class="timer-right">
           <div id="timerCountdown" class="timer-countdown">0:00</div>
-          <button id="timerStop" class="iconbtn" title="Stop">⏹</button>
+          <button id="timerMinus" class="iconbtn" title="Remove 15 seconds">-15</button>
           <button id="timerPlus" class="iconbtn" title="Add 30 seconds">+30</button>
+          <button id="timerStop" class="iconbtn" title="Stop">Stop</button>
         </div>
       </div>
-      <div class="progress">
-        <div id="timerProgress" class="progress-bar"></div>
-      </div>
+      <div class="progress"><div id="timerProgress" class="progress-bar"></div></div>
     </section>
 
-    <!-- ROUTE: WORKOUTS (Home) -->
     <section id="route-workouts" class="route">
-      <!-- Active workout panel (shown only when a session is running) -->
-      <section id="activeWorkout" class="panel hidden">
-        <div class="row space-between">
-          <div>
-            <h2 id="activeTitle">Workout</h2>
-            <div id="activeMeta" class="muted"></div>
-          </div>
-          <button id="endWorkoutBtn" class="btn btn-danger">Finish</button>
-        </div>
-        <div id="activeExercises"></div>
-      </section>
-
-      <!-- Workouts screens render here -->
+      <section id="activeWorkout" class="active-shell hidden"></section>
       <div id="workoutsRoot"></div>
     </section>
 
-    <!-- ROUTE: HISTORY -->
     <section id="route-history" class="route hidden">
       <div id="historyRoot"></div>
     </section>
 
-    <!-- ROUTE: SETTINGS -->
     <section id="route-settings" class="route hidden">
-      <div class="panel">
-        <h2>Settings</h2>
-
-        <div class="row space-between">
+      <div class="section-block">
+        <div class="section-head">
           <div>
-            <div class="label">Units</div>
-            <div class="muted">Default is lb. Toggle to kg.</div>
+            <h2>Settings</h2>
+            <p>Keep the tracker tuned to how you lift.</p>
           </div>
-          <label class="switch">
+        </div>
+        <div class="settings-list">
+          <label class="setting-row">
+            <span>
+              <strong>Units</strong>
+              <small>Turn on for kg. Leave off for lb.</small>
+            </span>
             <input id="unitsToggle" type="checkbox" />
-            <span class="slider"></span>
           </label>
-        </div>
-
-        <hr class="sep" />
-
-        <div class="row space-between">
-          <div>
-            <div class="label">Auto-start rest after set</div>
-            <div class="muted">Starts timer after saving a set.</div>
-          </div>
-          <label class="switch">
+          <label class="setting-row">
+            <span>
+              <strong>Auto-start rest timer</strong>
+              <small>Start the timer after a set is completed.</small>
+            </span>
             <input id="autoRestToggle" type="checkbox" />
-            <span class="slider"></span>
           </label>
-        </div>
-
-        <hr class="sep" />
-
-        <div class="row space-between">
-          <div>
-            <div class="label">Blank weight uses baseline</div>
-            <div class="muted">If weight is empty, uses last weight.</div>
-          </div>
-          <label class="switch">
+          <label class="setting-row">
+            <span>
+              <strong>Blank weight uses last weight</strong>
+              <small>Fast logging when your working weight stays the same.</small>
+            </span>
             <input id="blankWeightUsesBaselineToggle" type="checkbox" />
-            <span class="slider"></span>
           </label>
         </div>
+      </div>
 
-        <hr class="sep" />
-
-        <div class="card">
-          <div class="row space-between">
-            <div>
-              <div class="label">Custom exercises</div>
-              <div class="muted">Delete ones you don’t need.</div>
-            </div>
+      <div class="section-block">
+        <div class="section-head">
+          <div>
+            <h2>Custom Exercises</h2>
+            <p>Exercises you added to the library.</p>
           </div>
-          <div id="customExercisesList" class="list"></div>
+          <button id="newExerciseBtn" class="btn secondary">New</button>
         </div>
+        <div id="customExercisesList" class="list"></div>
+      </div>
 
-        <hr class="sep" />
-
-        <button id="resetAppBtn" class="btn btn-danger">Reset all data</button>
-        <div class="help">Clears workouts, history, and custom exercises.</div>
+      <div class="section-block danger-zone">
+        <h2>Reset</h2>
+        <p>Clears routines, history, active workout, and custom exercises.</p>
+        <button id="resetAppBtn" class="btn danger">Reset all data</button>
       </div>
     </section>
   </main>
 
-  <!-- Bottom Sheet Modal -->
   <div id="modal" class="modal hidden" aria-hidden="true">
     <div id="modalBackdrop" class="modal-backdrop"></div>
     <div class="sheet" role="dialog" aria-modal="true">
