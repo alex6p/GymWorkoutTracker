@@ -34,6 +34,8 @@ const els = {
   unitsToggle: $("unitsToggle"),
   autoRestToggle: $("autoRestToggle"),
   blankWeightUsesBaselineToggle: $("blankWeightUsesBaselineToggle"),
+  enableNotificationsBtn: $("enableNotificationsBtn"),
+  notificationStatus: $("notificationStatus"),
   customExercisesList: $("customExercisesList"),
   modal: $("modal"),
   modalBackdrop: $("modalBackdrop"),
@@ -51,6 +53,7 @@ $("timerStop").addEventListener("click", () => stopTimer(true));
 $("timerPlus").addEventListener("click", () => addTimer(30));
 $("timerMinus").addEventListener("click", () => addTimer(-15));
 $("newExerciseBtn").addEventListener("click", () => openCustomExerciseModal(() => renderSettingsRoute()));
+els.enableNotificationsBtn.addEventListener("click", enableTimerNotifications);
 els.modalBackdrop.addEventListener("click", closeModal);
 els.modalBackdrop.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
 
@@ -374,6 +377,63 @@ function notifyRestComplete(){
   notifyRestComplete._timer = setTimeout(() => {
     document.body.classList.remove("rest-complete-alert");
   }, 1800);
+  showTimerNotification();
+}
+async function enableTimerNotifications(){
+  if (!("Notification" in window)) {
+    toast("Notifications are not supported here.");
+    renderNotificationStatus();
+    return;
+  }
+  try {
+    const permission = await Notification.requestPermission();
+    toast(permission === "granted" ? "Timer notifications enabled" : "Notifications not enabled");
+  } catch {
+    toast("Could not enable notifications");
+  }
+  renderNotificationStatus();
+}
+async function showTimerNotification(){
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+  const options = {
+    body: "Rest is over. Time for your next set.",
+    tag: "lift-log-rest-timer",
+    renotify: true,
+    silent: false,
+    icon: "./icons/icon-192.png",
+    badge: "./icons/icon-192.png"
+  };
+  try {
+    const registration = await navigator.serviceWorker?.ready;
+    if (registration?.showNotification) {
+      await registration.showNotification("Rest timer done", options);
+      return;
+    }
+  } catch {}
+  try {
+    new Notification("Rest timer done", options);
+  } catch {}
+}
+function renderNotificationStatus(){
+  if (!els.notificationStatus || !els.enableNotificationsBtn) return;
+  if (!("Notification" in window)) {
+    els.notificationStatus.textContent = "Notifications are not supported in this browser.";
+    els.enableNotificationsBtn.disabled = true;
+    els.enableNotificationsBtn.textContent = "Unavailable";
+    return;
+  }
+  if (Notification.permission === "granted") {
+    els.notificationStatus.textContent = "Enabled. iPhone requires the app to be added to the Home Screen.";
+    els.enableNotificationsBtn.textContent = "Enabled";
+    return;
+  }
+  if (Notification.permission === "denied") {
+    els.notificationStatus.textContent = "Blocked. Turn it back on in iPhone notification settings.";
+    els.enableNotificationsBtn.textContent = "Blocked";
+    return;
+  }
+  els.notificationStatus.textContent = "Ask your phone to show a notification when rest ends.";
+  els.enableNotificationsBtn.textContent = "Enable";
 }
 function addTimer(seconds){
   if (!state.timer.running || !state.timer.endTs) return;
@@ -1117,6 +1177,7 @@ function renderHistoryDetail(){
 }
 function renderSettingsRoute(){
   if (route !== "settings") return;
+  renderNotificationStatus();
   els.unitsToggle.checked = !!state.settings.isKg;
   els.autoRestToggle.checked = !!state.settings.autoRest;
   els.blankWeightUsesBaselineToggle.checked = !!state.settings.blankWeightUsesBaseline;

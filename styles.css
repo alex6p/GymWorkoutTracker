@@ -15,6 +15,9 @@
 }
 
 *{box-sizing:border-box}
+*{
+  touch-action:manipulation;
+}
 html,body{min-height:100%}
 html{
   -webkit-text-size-adjust:100%;
@@ -52,6 +55,12 @@ button,input,select,textarea{
   font-size:16px;
 }
 button{cursor:pointer}
+button,.btn,.iconbtn,.hamburger-btn,.mini-btn{
+  touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  -webkit-user-select:none;
+}
 .hidden{display:none!important}
 
 .topbar{
@@ -336,6 +345,9 @@ h3{font-size:16px}
 .timer-title{font-weight:900}
 .timer-sub{color:#dff9c6;font-size:13px;margin-top:2px}
 .timer-right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.timer-right button{
+  touch-action:manipulation;
+}
 .timer-countdown{font-size:24px;font-weight:900;min-width:72px;text-align:right}
 .progress{height:7px;margin-top:10px;background:rgba(255,255,255,.12);border-radius:999px;overflow:hidden}
 .progress-bar{height:100%;width:0;background:var(--accent)}
