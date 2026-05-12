@@ -50,7 +50,6 @@ els.navItems.forEach(btn => btn.addEventListener("click", () => {
 $("timerStop").addEventListener("click", () => stopTimer(true));
 $("timerPlus").addEventListener("click", () => addTimer(30));
 $("timerMinus").addEventListener("click", () => addTimer(-15));
-$("resetAppBtn").addEventListener("click", resetAllData);
 $("newExerciseBtn").addEventListener("click", () => openCustomExerciseModal(() => renderSettingsRoute()));
 els.modalBackdrop.addEventListener("click", closeModal);
 els.modalBackdrop.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
@@ -256,6 +255,25 @@ function button(text, cls, onClick){
   b.addEventListener("click", onClick);
   return b;
 }
+function exerciseThumb(exerciseId){
+  const exercise = exerciseById(exerciseId);
+  const muscle = exercise?.muscleGroup || "Other";
+  const words = (exercise?.name || "Exercise").split(/\s+/).filter(Boolean);
+  const initials = words.slice(0, 2).map(word => word[0]).join("").toUpperCase();
+  const thumb = el("div", `exercise-thumb ${muscle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`);
+  thumb.setAttribute("aria-hidden", "true");
+  thumb.textContent = initials || "EX";
+  return thumb;
+}
+function exerciseTitleBlock(exerciseId, metaText){
+  const wrap = el("div","exercise-title-block");
+  wrap.appendChild(exerciseThumb(exerciseId));
+  const copy = el("div");
+  copy.appendChild(el("div","exercise-name", exerciseName(exerciseId)));
+  if (metaText) copy.appendChild(el("div","exercise-meta", metaText));
+  wrap.appendChild(copy);
+  return { wrap, copy };
+}
 function toast(msg){
   els.toast.textContent = msg;
   els.toast.classList.remove("hidden");
@@ -317,6 +335,7 @@ function setRoute(next){
 }
 
 let timerInterval = null;
+let workoutClockInterval = null;
 function startTimer(seconds, label){
   stopTimer(false);
   state.timer.running = true;
@@ -348,6 +367,13 @@ function notifyRestComplete(){
       navigator.vibrate([450,140,450,140,700]);
     }
   } catch {}
+  document.body.classList.remove("rest-complete-alert");
+  void document.body.offsetWidth;
+  document.body.classList.add("rest-complete-alert");
+  clearTimeout(notifyRestComplete._timer);
+  notifyRestComplete._timer = setTimeout(() => {
+    document.body.classList.remove("rest-complete-alert");
+  }, 1800);
 }
 function addTimer(seconds){
   if (!state.timer.running || !state.timer.endTs) return;
@@ -369,6 +395,20 @@ function stopTimer(hide){
   els.timerProgress.style.width = "0%";
   els.timerSub.textContent = "Ready for the next set";
   if (hide) els.timerBar.classList.add("hidden");
+}
+function startWorkoutClock(){
+  if (workoutClockInterval) clearInterval(workoutClockInterval);
+  workoutClockInterval = setInterval(updateWorkoutClock, 1000);
+  updateWorkoutClock();
+}
+function updateWorkoutClock(){
+  const sess = getActiveSession();
+  if (!sess) return;
+  const elapsed = fmtDuration(Date.now() - sess.startedAt);
+  els.headerPill.textContent = elapsed;
+  document.querySelectorAll("[data-workout-elapsed]").forEach(node => {
+    node.textContent = elapsed;
+  });
 }
 
 function startWorkout(workoutId){
@@ -775,7 +815,9 @@ function renderActiveWorkout(){
   const meta = el("div","active-meta");
   meta.appendChild(el("span","badge blue", `${doneSets.length}/${totalSets} sets`));
   meta.appendChild(el("span","badge", `${fmtWeight(volume)} volume`));
-  meta.appendChild(el("span","badge", fmtDuration(Date.now() - sess.startedAt)));
+  const elapsedBadge = el("span","badge", fmtDuration(Date.now() - sess.startedAt));
+  elapsedBadge.dataset.workoutElapsed = "true";
+  meta.appendChild(elapsedBadge);
   head.appendChild(meta);
   const notes = el("textarea","textarea workout-notes");
   notes.placeholder = "Workout notes";
@@ -789,18 +831,16 @@ function renderActiveWorkout(){
     const isExerciseComplete = se.sets.length > 0 && se.sets.every(set => set.done);
     card.classList.toggle("is-complete", isExerciseComplete);
     const topRow = el("div","exercise-head");
-    const title = el("div");
-    title.appendChild(el("div","exercise-name", exerciseName(se.exerciseId)));
     const best = bestSetForExercise(se.exerciseId);
     const last = lastSetForExercise(se.exerciseId);
-    title.appendChild(el("div","exercise-meta", [
+    const title = exerciseTitleBlock(se.exerciseId, [
       `Target ${se.targetSets} x ${se.targetReps}`,
       `Rest ${se.restSeconds}s`,
       best ? `Best est. 1RM ${fmtWeight(e1rm(best))}` : null,
       last ? `Last ${last.reps} x ${fmtWeight(last.weightLb)}` : null
-    ].filter(Boolean).join(" - ")));
-    title.appendChild(el("div","previous-weight", last ? `Previous weight: ${fmtWeight(last.weightLb)}` : "Previous weight: none yet"));
-    topRow.appendChild(title);
+    ].filter(Boolean).join(" - "));
+    title.copy.appendChild(el("div","previous-weight", last ? `Previous weight: ${fmtWeight(last.weightLb)}` : "Previous weight: none yet"));
+    topRow.appendChild(title.wrap);
     const activeControls = el("div","active-exercise-controls");
     const restField = el("label","field compact");
     restField.innerHTML = `<span>Rest timer</span>`;
@@ -939,11 +979,8 @@ function renderWorkoutDetail(){
   workout.exercises.forEach(te => {
     const card = el("div","exercise-card");
     const header = el("div","exercise-head");
-    const left = el("div");
-    left.appendChild(el("div","exercise-name", exerciseName(te.exerciseId)));
     const best = bestSetForExercise(te.exerciseId);
-    left.appendChild(el("div","exercise-meta", best ? `Best est. 1RM ${fmtWeight(e1rm(best))}` : "No completed history yet"));
-    header.appendChild(left);
+    header.appendChild(exerciseTitleBlock(te.exerciseId, best ? `Best est. 1RM ${fmtWeight(e1rm(best))}` : "No completed history yet").wrap);
     header.appendChild(button("Remove", "btn secondary", () => removeTemplateExercise(workout.id, te.id)));
     card.appendChild(header);
     const grid = el("div","grid2");
@@ -1050,7 +1087,7 @@ function renderHistoryDetail(){
   els.historyRoot.appendChild(block);
   sess.exercises.slice().sort((a,b)=>a.orderIndex-b.orderIndex).forEach(se => {
     const card = el("div","exercise-card");
-    card.appendChild(el("div","exercise-name", exerciseName(se.exerciseId)));
+    card.appendChild(exerciseTitleBlock(se.exerciseId).wrap);
     if (se.notes) card.appendChild(el("p","muted", se.notes));
     const sets = (se.sets || []).filter(s => s.done !== false);
     if (!sets.length) {
@@ -1113,6 +1150,7 @@ function resetAllData(){
 
 renderAll();
 setRoute("workouts");
+startWorkoutClock();
 if (state.timer.running && state.timer.endTs) {
   els.timerBar.classList.remove("hidden");
   els.timerSub.textContent = state.timer.label || "Ready for the next set";
