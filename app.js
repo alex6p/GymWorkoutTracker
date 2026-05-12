@@ -258,24 +258,11 @@ function button(text, cls, onClick){
   b.addEventListener("click", onClick);
   return b;
 }
-function exerciseThumb(exerciseId){
-  const exercise = exerciseById(exerciseId);
-  const muscle = exercise?.muscleGroup || "Other";
-  const words = (exercise?.name || "Exercise").split(/\s+/).filter(Boolean);
-  const initials = words.slice(0, 2).map(word => word[0]).join("").toUpperCase();
-  const thumb = el("div", `exercise-thumb ${muscle.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`);
-  thumb.setAttribute("aria-hidden", "true");
-  thumb.textContent = initials || "EX";
-  return thumb;
-}
 function exerciseTitleBlock(exerciseId, metaText){
-  const wrap = el("div","exercise-title-block");
-  wrap.appendChild(exerciseThumb(exerciseId));
-  const copy = el("div");
-  copy.appendChild(el("div","exercise-name", exerciseName(exerciseId)));
-  if (metaText) copy.appendChild(el("div","exercise-meta", metaText));
-  wrap.appendChild(copy);
-  return { wrap, copy };
+  const wrap = el("div");
+  wrap.appendChild(el("div","exercise-name", exerciseName(exerciseId)));
+  if (metaText) wrap.appendChild(el("div","exercise-meta", metaText));
+  return { wrap, copy: wrap };
 }
 function toast(msg){
   els.toast.textContent = msg;
