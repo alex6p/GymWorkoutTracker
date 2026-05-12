@@ -793,6 +793,8 @@ function renderActiveWorkout(){
     restField.innerHTML = `<span>Rest timer</span>`;
     const restInput = el("input","input");
     restInput.type = "number";
+    restInput.inputMode = "numeric";
+    restInput.pattern = "[0-9]*";
     restInput.min = "10";
     restInput.step = "5";
     restInput.value = se.restSeconds || 90;
@@ -940,6 +942,8 @@ function renderWorkoutDetail(){
       fieldWrap.appendChild(el("span","", label));
       const input = el("input","input");
       input.type = "number";
+      input.inputMode = "numeric";
+      input.pattern = "[0-9]*";
       input.min = field === "restSeconds" ? "10" : "1";
       input.placeholder = label;
       input.value = value;
