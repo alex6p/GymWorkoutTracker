@@ -1,4 +1,4 @@
-const CACHE = "lift-log-v17";
+const CACHE = "lift-log-v18";
 const ASSETS = [
   "./",
   "./index.html",
@@ -24,7 +24,35 @@ self.addEventListener("activate", (event) => {
 });
 
 self.addEventListener("fetch", (event) => {
-  event.respondWith(caches.match(event.request).then((cached) => cached || fetch(event.request)));
+  if (event.request.method !== "GET") return;
+
+  const url = new URL(event.request.url);
+  const shouldNetworkFirst =
+    event.request.mode === "navigate" ||
+    [".html", ".css", ".js", ".webmanifest"].some(ext => url.pathname.endsWith(ext));
+
+  if (shouldNetworkFirst) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html")))
+    );
+    return;
+  }
+
+  event.respondWith(
+    caches.match(event.request).then((cached) => {
+      return cached || fetch(event.request).then((response) => {
+        const copy = response.clone();
+        caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+        return response;
+      });
+    })
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {
