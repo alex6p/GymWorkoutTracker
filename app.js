@@ -775,6 +775,8 @@ function renderActiveWorkout(){
 
   sess.exercises.slice().sort((a,b)=>a.orderIndex-b.orderIndex).forEach(se => {
     const card = el("div","exercise-card");
+    const isExerciseComplete = se.sets.length > 0 && se.sets.every(set => set.done);
+    card.classList.toggle("is-complete", isExerciseComplete);
     const topRow = el("div","exercise-head");
     const title = el("div");
     title.appendChild(el("div","exercise-name", exerciseName(se.exerciseId)));
@@ -811,6 +813,7 @@ function renderActiveWorkout(){
     const tbody = el("tbody");
     se.sets.forEach(set => {
       const row = el("tr");
+      row.classList.toggle("is-complete", !!set.done);
       row.innerHTML = `
         <td>${set.setNumber}</td>
         <td>

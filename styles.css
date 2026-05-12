@@ -48,7 +48,7 @@ button{cursor:pointer}
 }
 .titlewrap{flex:1;min-width:0}
 .brand{font-size:18px;font-weight:900}
-.subbrand{margin-top:2px;color:var(--muted);font-size:13px}
+.subbrand{color:var(--text);font-size:18px;font-weight:900}
 .container{max-width:980px;margin:0 auto;padding:16px 16px 96px}
 
 .pill,.badge,.set-type{
@@ -88,6 +88,25 @@ button{cursor:pointer}
 .btn.danger{background:var(--danger);color:#250809}
 .btn.full{width:100%}
 .btn:active,.iconbtn:active{transform:translateY(1px)}
+.hamburger-btn{
+  width:44px;
+  height:42px;
+  display:grid;
+  place-content:center;
+  gap:5px;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:#252a31;
+  padding:0;
+}
+.hamburger-btn span{
+  display:block;
+  width:20px;
+  height:2px;
+  border-radius:999px;
+  background:var(--text);
+}
+.hamburger-btn:active{transform:translateY(1px)}
 
 .drawer{position:fixed;inset:0;z-index:60}
 .drawer-backdrop{position:absolute;inset:0;background:rgba(0,0,0,.62)}
@@ -154,6 +173,10 @@ h3{font-size:16px}
 .routine-list,.list{display:grid;gap:10px}
 .routine-card,.exercise-card{padding:14px}
 .routine-card:hover,.exercise-card:hover{border-color:#46505e}
+.exercise-card.is-complete{
+  background:rgba(143,209,79,.13);
+  border-color:rgba(143,209,79,.48);
+}
 .routine-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
 .routine-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
@@ -208,6 +231,9 @@ h3{font-size:16px}
 .set-table{width:100%;border-collapse:collapse;table-layout:fixed}
 .set-table th,.set-table td{border-top:1px solid var(--line);padding:8px 5px;text-align:left;font-size:14px}
 .set-table th{color:var(--soft);font-size:12px;font-weight:900}
+.set-table tr.is-complete td{
+  background:rgba(143,209,79,.16);
+}
 .set-table input,.set-table select,.input,.textarea{
   width:100%;
   min-height:40px;
@@ -241,8 +267,21 @@ h3{font-size:16px}
   padding:12px;
   border:1px solid rgba(143,209,79,.38);
   border-radius:var(--radius);
-  background:#1f2c1a;
+  background:#162013;
+  background-image:none;
+  opacity:1;
+  isolation:isolate;
+  backdrop-filter:none;
+  -webkit-backdrop-filter:none;
   box-shadow:0 14px 32px rgba(0,0,0,.38);
+}
+.timerbar::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  border-radius:inherit;
+  background:#162013;
 }
 .timerbar-row{display:flex;justify-content:space-between;align-items:center;gap:10px}
 .timer-title{font-weight:900}
