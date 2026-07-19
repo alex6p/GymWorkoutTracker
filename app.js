@@ -60,6 +60,7 @@ els.testTimerSoundBtn.addEventListener("click", testTimerSound);
 els.modalBackdrop.addEventListener("click", closeModal);
 els.modalBackdrop.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
 document.addEventListener("pointerdown", unlockTimerAudio, { once:true, passive:true });
+document.addEventListener("touchend", unlockTimerAudio, { once:true, passive:true });
 document.addEventListener("keydown", unlockTimerAudio, { once:true });
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
@@ -337,6 +338,8 @@ function setRoute(next){
 let timerInterval = null;
 let workoutClockInterval = null;
 let timerAudioContext = null;
+let scheduledTimerSoundNodes = [];
+let timerSoundScheduledForEndTs = null;
 function getTimerAudioContext(){
   const AudioContextClass = window.AudioContext || window.webkitAudioContext;
   if (!AudioContextClass) return null;
@@ -348,9 +351,67 @@ async function unlockTimerAudio(){
   try {
     const context = getTimerAudioContext();
     if (!context) return false;
-    if (context.state === "suspended") await context.resume();
+    if (context.state === "suspended") {
+      const resumePromise = context.resume();
+      await Promise.race([
+        resumePromise,
+        new Promise(resolve => setTimeout(resolve, 750))
+      ]);
+    }
     return context.state === "running";
   } catch {
+    return false;
+  }
+}
+function createTimerChime(context, startAt){
+  return [
+    { frequency:880, offset:0, duration:0.16 },
+    { frequency:1046.5, offset:0.22, duration:0.16 },
+    { frequency:1318.5, offset:0.44, duration:0.34 }
+  ].map(note => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    const noteStart = startAt + note.offset;
+    const noteEnd = noteStart + note.duration;
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(note.frequency, noteStart);
+    gain.gain.setValueAtTime(0.0001, noteStart);
+    gain.gain.exponentialRampToValueAtTime(0.32, noteStart + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, noteEnd);
+    oscillator.connect(gain);
+    gain.connect(context.destination);
+    oscillator.start(noteStart);
+    oscillator.stop(noteEnd + 0.02);
+    oscillator.onended = () => {
+      try { oscillator.disconnect(); } catch {}
+      try { gain.disconnect(); } catch {}
+    };
+    return { oscillator, gain };
+  });
+}
+function cancelScheduledTimerSound(){
+  scheduledTimerSoundNodes.forEach(({ oscillator, gain }) => {
+    try { oscillator.stop(); } catch {}
+    try { oscillator.disconnect(); } catch {}
+    try { gain.disconnect(); } catch {}
+  });
+  scheduledTimerSoundNodes = [];
+  timerSoundScheduledForEndTs = null;
+}
+async function scheduleTimerCompleteSound(){
+  cancelScheduledTimerSound();
+  if (!state.settings.timerSound || !state.timer.running || !state.timer.endTs) return false;
+  const scheduledEndTs = state.timer.endTs;
+  if (!(await unlockTimerAudio())) return false;
+  if (!state.timer.running || state.timer.endTs !== scheduledEndTs) return false;
+  try {
+    const context = getTimerAudioContext();
+    const secondsUntilEnd = Math.max(0.05, (scheduledEndTs - Date.now()) / 1000);
+    scheduledTimerSoundNodes = createTimerChime(context, context.currentTime + secondsUntilEnd);
+    timerSoundScheduledForEndTs = scheduledEndTs;
+    return true;
+  } catch {
+    cancelScheduledTimerSound();
     return false;
   }
 }
@@ -358,26 +419,7 @@ async function playTimerCompleteSound(){
   if (!state.settings.timerSound || !(await unlockTimerAudio())) return false;
   try {
     const context = getTimerAudioContext();
-    const startAt = context.currentTime + 0.03;
-    [
-      { frequency:880, offset:0, duration:0.16 },
-      { frequency:1046.5, offset:0.22, duration:0.16 },
-      { frequency:1318.5, offset:0.44, duration:0.34 }
-    ].forEach(note => {
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      const noteStart = startAt + note.offset;
-      const noteEnd = noteStart + note.duration;
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(note.frequency, noteStart);
-      gain.gain.setValueAtTime(0.0001, noteStart);
-      gain.gain.exponentialRampToValueAtTime(0.32, noteStart + 0.025);
-      gain.gain.exponentialRampToValueAtTime(0.0001, noteEnd);
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-      oscillator.start(noteStart);
-      oscillator.stop(noteEnd + 0.02);
-    });
+    createTimerChime(context, context.currentTime + 0.03);
     return true;
   } catch {
     return false;
@@ -398,6 +440,7 @@ function startTimer(seconds, label){
   els.timerBar.classList.remove("hidden");
   els.timerSub.textContent = state.timer.label || "Ready for the next set";
   timerInterval = setInterval(tickTimer, 250);
+  void scheduleTimerCompleteSound();
   tickTimer();
 }
 function tickTimer(){
@@ -408,13 +451,15 @@ function tickTimer(){
   const pct = state.timer.total > 0 ? (1 - remaining / state.timer.total) * 100 : 0;
   els.timerProgress.style.width = `${Math.max(0, Math.min(100, pct))}%`;
   if (remaining <= 0) {
-    stopTimer(true);
-    notifyRestComplete();
+    const soundWasScheduled = timerSoundScheduledForEndTs === state.timer.endTs;
+    stopTimer(true, false);
+    timerSoundScheduledForEndTs = null;
+    notifyRestComplete(soundWasScheduled);
     toast("Rest complete");
   }
 }
-function notifyRestComplete(){
-  void playTimerCompleteSound();
+function notifyRestComplete(soundWasScheduled = false){
+  if (!soundWasScheduled) void playTimerCompleteSound();
   try {
     if (navigator.vibrate) {
       navigator.vibrate([450,140,450,140,700]);
@@ -484,7 +529,7 @@ function renderNotificationStatus(){
     els.enableNotificationsBtn.disabled = true;
     return;
   }
-  els.notificationStatus.textContent = "Ask your phone to show a notification when rest ends.";
+  els.notificationStatus.textContent = "Show a system alert when supported. On iPhone, add the app to your Home Screen first.";
   els.enableNotificationsBtn.textContent = "Enable";
   els.enableNotificationsBtn.disabled = false;
 }
@@ -493,11 +538,13 @@ function addTimer(seconds){
   state.timer.endTs += seconds * 1000;
   state.timer.total = Math.max(1, state.timer.total + seconds);
   saveState();
+  void scheduleTimerCompleteSound();
   tickTimer();
 }
-function stopTimer(hide){
+function stopTimer(hide, cancelSound = true){
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = null;
+  if (cancelSound) cancelScheduledTimerSound();
   state.timer.running = false;
   state.timer.total = 0;
   state.timer.remaining = 0;
@@ -1264,7 +1311,12 @@ function renderSettingsRoute(){
     state.settings.timerSound = els.timerSoundToggle.checked;
     els.testTimerSoundBtn.disabled = !state.settings.timerSound;
     saveState();
-    if (state.settings.timerSound) void unlockTimerAudio();
+    if (state.settings.timerSound) {
+      void unlockTimerAudio();
+      if (state.timer.running) void scheduleTimerCompleteSound();
+    } else {
+      cancelScheduledTimerSound();
+    }
   };
   els.blankWeightUsesBaselineToggle.onchange = () => { state.settings.blankWeightUsesBaseline = els.blankWeightUsesBaselineToggle.checked; saveState(); };
   els.customExercisesList.innerHTML = "";
