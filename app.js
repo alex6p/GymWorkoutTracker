@@ -33,6 +33,8 @@ const els = {
   settingsRoute: $("route-settings"),
   unitsToggle: $("unitsToggle"),
   autoRestToggle: $("autoRestToggle"),
+  timerSoundToggle: $("timerSoundToggle"),
+  testTimerSoundBtn: $("testTimerSoundBtn"),
   blankWeightUsesBaselineToggle: $("blankWeightUsesBaselineToggle"),
   enableNotificationsBtn: $("enableNotificationsBtn"),
   notificationStatus: $("notificationStatus"),
@@ -54,13 +56,21 @@ $("timerPlus").addEventListener("click", () => addTimer(30));
 $("timerMinus").addEventListener("click", () => addTimer(-15));
 $("newExerciseBtn").addEventListener("click", () => openCustomExerciseModal(() => renderSettingsRoute()));
 els.enableNotificationsBtn.addEventListener("click", enableTimerNotifications);
+els.testTimerSoundBtn.addEventListener("click", testTimerSound);
 els.modalBackdrop.addEventListener("click", closeModal);
 els.modalBackdrop.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
+document.addEventListener("pointerdown", unlockTimerAudio, { once:true, passive:true });
+document.addEventListener("keydown", unlockTimerAudio, { once:true });
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  if (!els.modal.classList.contains("hidden")) closeModal();
+  else if (!els.drawer.classList.contains("hidden")) closeDrawer();
+});
 
 function DEFAULT_STATE(){
   const exercises = seedExercises();
   return {
-    settings: { isKg:false, autoRest:true, blankWeightUsesBaseline:true },
+    settings: { isKg:false, autoRest:true, timerSound:true, blankWeightUsesBaseline:true },
     exercises,
     workouts: seedWorkouts(exercises),
     sessions: [],
@@ -176,7 +186,7 @@ function migrateLegacy(old, defaults){
 }
 
 function normalizeState(s){
-  s.settings = { isKg:false, autoRest:true, blankWeightUsesBaseline:true, ...(s.settings || {}) };
+  s.settings = { isKg:false, autoRest:true, timerSound:true, blankWeightUsesBaseline:true, ...(s.settings || {}) };
   s.exercises = Array.isArray(s.exercises) ? s.exercises : [];
   s.workouts = Array.isArray(s.workouts) ? s.workouts : [];
   s.sessions = Array.isArray(s.sessions) ? s.sessions : [];
@@ -326,8 +336,60 @@ function setRoute(next){
 
 let timerInterval = null;
 let workoutClockInterval = null;
+let timerAudioContext = null;
+function getTimerAudioContext(){
+  const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextClass) return null;
+  timerAudioContext ||= new AudioContextClass();
+  return timerAudioContext;
+}
+async function unlockTimerAudio(){
+  if (!state.settings.timerSound) return false;
+  try {
+    const context = getTimerAudioContext();
+    if (!context) return false;
+    if (context.state === "suspended") await context.resume();
+    return context.state === "running";
+  } catch {
+    return false;
+  }
+}
+async function playTimerCompleteSound(){
+  if (!state.settings.timerSound || !(await unlockTimerAudio())) return false;
+  try {
+    const context = getTimerAudioContext();
+    const startAt = context.currentTime + 0.03;
+    [
+      { frequency:880, offset:0, duration:0.16 },
+      { frequency:1046.5, offset:0.22, duration:0.16 },
+      { frequency:1318.5, offset:0.44, duration:0.34 }
+    ].forEach(note => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      const noteStart = startAt + note.offset;
+      const noteEnd = noteStart + note.duration;
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(note.frequency, noteStart);
+      gain.gain.setValueAtTime(0.0001, noteStart);
+      gain.gain.exponentialRampToValueAtTime(0.32, noteStart + 0.025);
+      gain.gain.exponentialRampToValueAtTime(0.0001, noteEnd);
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+      oscillator.start(noteStart);
+      oscillator.stop(noteEnd + 0.02);
+    });
+    return true;
+  } catch {
+    return false;
+  }
+}
+async function testTimerSound(){
+  const played = await playTimerCompleteSound();
+  toast(played ? "Timer sound is working" : "Sound is off or blocked by this browser");
+}
 function startTimer(seconds, label){
   stopTimer(false);
+  void unlockTimerAudio();
   state.timer.running = true;
   state.timer.total = Math.max(0, Number(seconds) || 0);
   state.timer.endTs = Date.now() + state.timer.total * 1000;
@@ -352,6 +414,7 @@ function tickTimer(){
   }
 }
 function notifyRestComplete(){
+  void playTimerCompleteSound();
   try {
     if (navigator.vibrate) {
       navigator.vibrate([450,140,450,140,700]);
@@ -410,17 +473,20 @@ function renderNotificationStatus(){
     return;
   }
   if (Notification.permission === "granted") {
-    els.notificationStatus.textContent = "Enabled. iPhone requires the app to be added to the Home Screen.";
+    els.notificationStatus.textContent = "Enabled. Background rest alerts can appear as system notifications.";
     els.enableNotificationsBtn.textContent = "Enabled";
+    els.enableNotificationsBtn.disabled = true;
     return;
   }
   if (Notification.permission === "denied") {
-    els.notificationStatus.textContent = "Blocked. Turn it back on in iPhone notification settings.";
+    els.notificationStatus.textContent = "Blocked. Turn notifications back on in your device or browser settings.";
     els.enableNotificationsBtn.textContent = "Blocked";
+    els.enableNotificationsBtn.disabled = true;
     return;
   }
   els.notificationStatus.textContent = "Ask your phone to show a notification when rest ends.";
   els.enableNotificationsBtn.textContent = "Enable";
+  els.enableNotificationsBtn.disabled = false;
 }
 function addTimer(seconds){
   if (!state.timer.running || !state.timer.endTs) return;
@@ -655,19 +721,27 @@ function removeTemplateExercise(workoutId, templateId){
 }
 function addCustomExercise(data){
   const name = String(data.name || "").trim();
-  if (!name) return toast("Name required");
+  if (!name) {
+    toast("Name required");
+    return null;
+  }
   const existing = state.exercises.find(e => e.name.toLowerCase() === name.toLowerCase());
-  if (existing) return toast("Exercise already exists");
-  state.exercises.push({
+  if (existing) {
+    toast("Exercise already exists");
+    return null;
+  }
+  const exercise = {
     id: uid(),
     name,
     muscleGroup: String(data.muscleGroup || "Other").trim() || "Other",
     equipment: String(data.equipment || "Other").trim() || "Other",
     notes: String(data.notes || "").trim(),
     isCustom: true
-  });
+  };
+  state.exercises.push(exercise);
   saveState();
   toast("Exercise added");
+  return exercise;
 }
 function deleteCustomExercise(exerciseId){
   const exercise = exerciseById(exerciseId);
@@ -679,14 +753,19 @@ function deleteCustomExercise(exerciseId){
 }
 
 let scrollY = 0;
+let modalReturnFocus = null;
 function openModal(html, mode = ""){
   scrollY = window.scrollY || 0;
+  modalReturnFocus = document.activeElement;
   document.body.classList.add("modal-open");
   document.body.style.top = `-${scrollY}px`;
   els.modalContent.innerHTML = html;
   els.modal.classList.remove("hidden");
   els.modal.setAttribute("aria-hidden","false");
   els.modal.classList.toggle("picker-modal", mode === "picker");
+  requestAnimationFrame(() => {
+    els.modalContent.querySelector("[autofocus], input, button, select, textarea")?.focus();
+  });
 }
 function closeModal(){
   els.modal.classList.add("hidden");
@@ -696,6 +775,8 @@ function closeModal(){
   document.body.classList.remove("modal-open");
   document.body.style.top = "";
   window.scrollTo(0, scrollY);
+  if (modalReturnFocus?.isConnected) modalReturnFocus.focus();
+  modalReturnFocus = null;
 }
 function openNewWorkoutModal(){
   openModal(`
@@ -733,18 +814,18 @@ function openCustomExerciseModal(onDone, prefillName = ""){
   $("mClose").onclick = closeModal;
   $("mCancel").onclick = closeModal;
   $("mSave").onclick = () => {
-    addCustomExercise({
+    const exercise = addCustomExercise({
       name: $("mName").value,
       muscleGroup: $("mMuscle").value,
       equipment: $("mEquip").value,
       notes: $("mNotes").value
     });
+    if (!exercise) return;
     closeModal();
-    onDone?.();
+    onDone?.(exercise);
   };
 }
-function openExercisePicker(workoutId){
-  const selected = new Set();
+function openExercisePicker(workoutId, selected = new Set()){
   openModal(`
     <div class="picker-top">
       <div class="sheethead">
@@ -792,7 +873,10 @@ function openExercisePicker(workoutId){
   };
   $("mClose").onclick = closeModal;
   $("mSearch").oninput = render;
-  $("mNew").onclick = () => openCustomExerciseModal(() => openExercisePicker(workoutId), $("mSearch").value.trim());
+  $("mNew").onclick = () => openCustomExerciseModal((exercise) => {
+    selected.add(exercise.id);
+    openExercisePicker(workoutId, selected);
+  }, $("mSearch").value.trim());
   $("mAdd").onclick = () => selected.size ? addExercisesToWorkout(workoutId, Array.from(selected)) : toast("Select at least one");
   render();
 }
@@ -1171,9 +1255,17 @@ function renderSettingsRoute(){
   renderNotificationStatus();
   els.unitsToggle.checked = !!state.settings.isKg;
   els.autoRestToggle.checked = !!state.settings.autoRest;
+  els.timerSoundToggle.checked = !!state.settings.timerSound;
+  els.testTimerSoundBtn.disabled = !state.settings.timerSound;
   els.blankWeightUsesBaselineToggle.checked = !!state.settings.blankWeightUsesBaseline;
   els.unitsToggle.onchange = () => { state.settings.isKg = els.unitsToggle.checked; saveState(); renderAll(); };
   els.autoRestToggle.onchange = () => { state.settings.autoRest = els.autoRestToggle.checked; saveState(); };
+  els.timerSoundToggle.onchange = () => {
+    state.settings.timerSound = els.timerSoundToggle.checked;
+    els.testTimerSoundBtn.disabled = !state.settings.timerSound;
+    saveState();
+    if (state.settings.timerSound) void unlockTimerAudio();
+  };
   els.blankWeightUsesBaselineToggle.onchange = () => { state.settings.blankWeightUsesBaseline = els.blankWeightUsesBaselineToggle.checked; saveState(); };
   els.customExercisesList.innerHTML = "";
   const customs = state.exercises.filter(e => e.isCustom).sort((a,b)=>a.name.localeCompare(b.name));

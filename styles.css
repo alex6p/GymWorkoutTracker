@@ -55,6 +55,7 @@ button,input,select,textarea{
   font-size:16px;
 }
 button{cursor:pointer}
+button:disabled{cursor:not-allowed;opacity:.55}
 button,.btn,.iconbtn,.hamburger-btn,.mini-btn{
   touch-action:manipulation;
   -webkit-tap-highlight-color:transparent;
@@ -117,6 +118,10 @@ button,.btn,.iconbtn,.hamburger-btn,.mini-btn{
 .btn.danger{background:var(--danger);color:#250809}
 .btn.full{width:100%}
 .btn:active,.iconbtn:active{transform:translateY(1px)}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{
+  outline:3px solid var(--accent-2);
+  outline-offset:2px;
+}
 .hamburger-btn{
   width:44px;
   height:42px;
@@ -337,6 +342,7 @@ h3{font-size:16px}
 .setting-row span{display:grid;gap:3px}
 .setting-row small{color:var(--muted)}
 .setting-row input{width:22px;height:22px}
+.setting-actions{display:flex;align-items:center;gap:10px;flex:0 0 auto}
 .danger-zone{border-color:rgba(255,104,104,.35)}
 
 .modal{
@@ -416,6 +422,10 @@ h3{font-size:16px}
   box-shadow:var(--shadow);
 }
 body.modal-open{position:fixed;width:100%;overflow:hidden}
+
+@media (prefers-reduced-motion:reduce){
+  body.rest-complete-alert::after{animation:none;opacity:1}
+}
 
 @media (max-width:720px){
   .container{padding:12px 12px 90px}
