@@ -1,9 +1,10 @@
-const CACHE = "lift-log-v22";
+const CACHE = "lift-log-v24";
 const ASSETS = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./native-bridge.js",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
