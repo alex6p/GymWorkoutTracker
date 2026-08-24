@@ -1,11 +1,16 @@
-# Lift Log automation setup
+# Lift Log automatic weekly-plan setup
 
-The app code and weekly GitHub workflow are already prepared. This one-time setup connects the phone app to a private Supabase table and gives GitHub Actions permission to generate the next plan.
+Lift Log uses Supabase for two private data flows:
+
+- completed workouts sync from the signed-in phone to `workout_sessions`;
+- the Sunday ChatGPT automation reviews those sessions and writes the next plan to `weekly_plans`.
+
+When the app opens while signed in, it downloads the newest owner-only plan. This path does not use the OpenAI API or require an OpenAI API key.
 
 ## 1. Create the private Supabase database
 
 1. Create a Supabase project.
-2. Open **SQL Editor**, create a new query, paste the full contents of `supabase/schema.sql`, and run it.
+2. Open **SQL Editor**, create a new query, paste the full contents of `supabase/schema.sql`, and run it. The script creates both private tables and their row-level-security policies.
 3. In **Authentication > URL Configuration**, set the Site URL to `https://alex6p.github.io/GymWorkoutTracker/` and add the same URL to the redirect allow list.
 4. From the project's API settings, copy the **Project URL** and the client-safe **Publishable key** (`sb_publishable_...`). These two values are designed for browser use; do not use the service-role key in the app.
 
@@ -17,31 +22,27 @@ The app code and weekly GitHub workflow are already prepared. This one-time setu
 4. If Supabase sends a confirmation email, confirm it and return to Lift Log.
 5. Enter the same email and password and select **Sign In**, followed by **Sync Now**.
 
-The password is used only for sign-in and is never stored by Lift Log. The browser stores the renewable Supabase session on that device so later workouts can sync without another login.
+The password is used only for sign-in and is never stored by Lift Log. The browser stores the renewable Supabase session on that device so later workouts can sync without another login. Signing in also checks immediately for a newly published weekly plan.
 
-## 3. Add the private GitHub Actions values
+## 3. Weekly review and publishing
 
-In the GitHub repository, open **Settings > Secrets and variables > Actions** and add these repository secrets:
+The recurring ChatGPT task performs the weekly review directly through the connected Supabase plugin. It reads only the workout history needed for progression, generates the four-day plan, validates the plan shape, and upserts it into `weekly_plans` for the same owner.
 
-| Secret | Value |
-|---|---|
-| `SUPABASE_URL` | The Supabase Project URL |
-| `SUPABASE_SERVICE_ROLE_KEY` | The private Supabase service-role/secret key |
-| `SUPABASE_USER_ID` | Your user UUID from **Supabase > Authentication > Users** |
-| `OPENAI_API_KEY` | An OpenAI API key created for this workflow |
+No `OPENAI_API_KEY` is needed. The GitHub Action secrets and the old scheduled AI workflow are not part of this path. Keep private database keys out of the app, repository files, issues, and chat.
 
-Never put the service-role key or OpenAI API key in the app, repository files, an issue, or chat.
+## 4. Normal use
 
-Optional: under **Variables**, add `OPENAI_MODEL`. If omitted, the workflow uses `gpt-5.6`.
+1. Stay signed in to Supabase inside Lift Log on the phone.
+2. Finish workouts normally. A completed workout syncs immediately when online.
+3. Reopen Lift Log after the weekly plan is generated. It checks Supabase on startup and whenever the browser returns online.
+4. Use **Sync Now** if a completed workout is still waiting to upload.
 
-## 4. Test the automation
+If the phone is offline, completed workouts remain queued locally and retry later. `data/current-plan.json` remains a read-only fallback if Supabase is temporarily unavailable. **Export Workout Data** is a manual backup and troubleshooting option; it is not required for the normal weekly review.
 
-1. Open the repository's **Actions** tab.
-2. Choose **Weekly automated strength plan**.
-3. Select **Run workflow** and leave the optional plan-week field blank.
-4. Confirm the run succeeds and creates a commit named `Publish automated weekly strength plan`.
-5. Reopen Lift Log and confirm the four routines show the new plan week.
+## Security model
 
-After the test, Lift Log will sync each completed workout immediately. If the phone is offline, the workout remains queued locally and retries when the app next opens online. The GitHub workflow runs Sunday evening Eastern, reviews up to six weeks of private sessions, validates the four-day plan, commits only `data/current-plan.json`, and lets GitHub Pages publish it.
-
-The manual **Export Workout Data** and **Sync Now** buttons remain available as recovery options.
+- the publishable key in the browser identifies the Supabase project but does not bypass security;
+- Supabase Auth identifies the signed-in user;
+- row-level security limits workout and plan reads to that user's rows;
+- the app can read its owner's generated plans but cannot create, edit, or delete them;
+- anonymous visitors cannot read either private table.

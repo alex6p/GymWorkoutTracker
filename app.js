@@ -5,7 +5,7 @@
 
 const LS_KEY = "gym_tracker_v6";
 const LEGACY_KEYS = ["gym_tracker_v5","gym_tracker_v4","gym_tracker_v3","gym_tracker_v2","gym_tracker_v1"];
-const APP_VERSION = "7.0.0";
+const APP_VERSION = "7.1.0";
 const WEEKLY_PLAN_MIGRATION = "strength_rebuild_2026_08_24_v1";
 const BASELINE_SESSION_KEY = "upper_a_2026_08_17";
 const PUBLISHED_PLAN_PATH = "./data/current-plan.json";
@@ -95,7 +95,10 @@ document.addEventListener("keydown", (event) => {
   if (!els.modal.classList.contains("hidden")) closeModal();
   else if (!els.drawer.classList.contains("hidden")) closeDrawer();
 });
-window.addEventListener("online", () => void syncAllCompletedSessions({ silent:true }));
+window.addEventListener("online", () => {
+  void syncAllCompletedSessions({ silent:true });
+  void refreshBestAvailablePlan();
+});
 
 function DEFAULT_STATE(){
   const exercises = seedExercises();
@@ -451,6 +454,51 @@ async function refreshPublishedPlan(){
     console.warn("Weekly plan refresh skipped:", error);
     return false;
   }
+}
+
+async function refreshSupabasePlan(retried = false){
+  if (!syncConfigIsValid() || (!syncState.accessToken && !syncState.refreshToken)) {
+    return { available:false, found:false, changed:false };
+  }
+
+  try {
+    const accessToken = await ensureFreshSyncSession();
+    const endpoint = new URL(`${syncState.supabaseUrl}/rest/v1/weekly_plans`);
+    endpoint.searchParams.set("select", "plan");
+    endpoint.searchParams.set("order", "plan_week.desc,generated_at.desc");
+    endpoint.searchParams.set("limit", "1");
+    const response = await fetch(endpoint, {
+      headers:authHeaders(accessToken),
+      cache:"no-store"
+    });
+    if (response.status === 401 && !retried && syncState.refreshToken) {
+      syncState.accessToken = "";
+      syncState.expiresAt = 0;
+      saveSyncState();
+      return refreshSupabasePlan(true);
+    }
+    const rows = await responseJsonOrError(response, "Weekly plan sync");
+    if (!Array.isArray(rows) || !rows.length) {
+      return { available:true, found:false, changed:false };
+    }
+    const plan = rows[0]?.plan;
+    if (!validatePublishedPlan(plan)) throw new Error("The synced weekly plan is invalid.");
+    const changed = applyPublishedPlan(plan);
+    if (changed) {
+      renderAll();
+      toast(`Plan updated for week of ${fmtPlanWeek(plan.planWeek)}`);
+    }
+    return { available:true, found:true, changed };
+  } catch (error) {
+    console.warn("Supabase weekly plan refresh skipped:", error);
+    return { available:false, found:false, changed:false };
+  }
+}
+
+async function refreshBestAvailablePlan(){
+  const cloud = await refreshSupabasePlan();
+  if (cloud.found) return cloud.changed;
+  return refreshPublishedPlan();
 }
 
 function seedBaselineSession(s, idByName, upperADefinition){
@@ -811,7 +859,7 @@ function buildExportPayload(){
     exportedAt:new Date().toISOString(),
     displayUnits:unitLabel(),
     publishedPlan:state.publishedPlan,
-    reviewInstructions:"Upload this JSON file to ChatGPT and ask it to review your completed workouts and adjust next week's four-day strength plan.",
+    reviewInstructions:"Automatic weekly review uses the private Supabase sync. Upload this file to ChatGPT only as a manual backup or troubleshooting fallback.",
     summary:{
       workoutTemplates:state.workouts.length,
       completedSessions:sessions.length,
@@ -1046,7 +1094,12 @@ async function signUpForSync(){
   } finally {
     if (els.syncPasswordInput) els.syncPasswordInput.value = "";
     setSyncBusy(false);
-    if (shouldSync) void syncAllCompletedSessions({ silent:true, force:true });
+    if (shouldSync) {
+      void Promise.all([
+        syncAllCompletedSessions({ silent:true, force:true }),
+        refreshBestAvailablePlan()
+      ]);
+    }
   }
 }
 
@@ -1074,7 +1127,12 @@ async function signInForSync(){
   } finally {
     if (els.syncPasswordInput) els.syncPasswordInput.value = "";
     setSyncBusy(false);
-    if (shouldSync) void syncAllCompletedSessions({ silent:true, force:true });
+    if (shouldSync) {
+      void Promise.all([
+        syncAllCompletedSessions({ silent:true, force:true }),
+        refreshBestAvailablePlan()
+      ]);
+    }
   }
 }
 
@@ -1217,7 +1275,7 @@ function renderSyncSettings(){
 async function initializeCloudFeatures(){
   await loadPublishedSyncConfig();
   await Promise.all([
-    refreshPublishedPlan(),
+    refreshBestAvailablePlan(),
     syncAllCompletedSessions({ silent:true })
   ]);
   renderSyncSettings();
