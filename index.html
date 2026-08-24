@@ -120,6 +120,42 @@
       <div class="section-block">
         <div class="section-head">
           <div>
+            <h2>Automatic Workout Sync</h2>
+            <p>Privately sync completed workouts so the next plan can be generated and published automatically.</p>
+          </div>
+          <span id="syncStatus" class="badge">Not connected</span>
+        </div>
+        <div class="sync-grid">
+          <label class="field">
+            <span>Supabase project URL</span>
+            <input id="supabaseUrlInput" class="input" type="url" inputmode="url" autocomplete="url" placeholder="https://your-project.supabase.co" />
+          </label>
+          <label class="field">
+            <span>Supabase publishable key</span>
+            <input id="supabaseKeyInput" class="input" type="password" autocomplete="off" placeholder="sb_publishable_..." />
+          </label>
+          <label class="field">
+            <span>Account email</span>
+            <input id="syncEmailInput" class="input" type="email" inputmode="email" autocomplete="username" placeholder="you@example.com" />
+          </label>
+          <label class="field">
+            <span>Account password</span>
+            <input id="syncPasswordInput" class="input" type="password" autocomplete="current-password" placeholder="Enter only when signing in" />
+          </label>
+        </div>
+        <div class="sync-actions">
+          <button id="saveSyncConfigBtn" class="btn secondary" type="button">Save Connection</button>
+          <button id="signUpSyncBtn" class="btn secondary" type="button">Create Account</button>
+          <button id="signInSyncBtn" class="btn" type="button">Sign In</button>
+          <button id="syncNowBtn" class="btn secondary" type="button">Sync Now</button>
+          <button id="signOutSyncBtn" class="btn secondary" type="button">Sign Out</button>
+        </div>
+        <p id="syncDetails" class="muted">Connection details are stored only on this device. Your password is never saved.</p>
+      </div>
+
+      <div class="section-block">
+        <div class="section-head">
+          <div>
             <h2>Export for Review</h2>
             <p>Creates a JSON file containing your routines, completed sets, weights, reps, RIR, cardio, session length, and notes.</p>
           </div>

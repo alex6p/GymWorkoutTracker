@@ -1,4 +1,4 @@
-const CACHE = "lift-log-v25";
+const CACHE = "lift-log-v26";
 const ASSETS = [
   "./",
   "./index.html",
@@ -6,6 +6,8 @@ const ASSETS = [
   "./app.js",
   "./native-bridge.js",
   "./manifest.webmanifest",
+  "./data/current-plan.json",
+  "./data/sync-config.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];
@@ -30,7 +32,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(event.request.url);
   const shouldNetworkFirst =
     event.request.mode === "navigate" ||
-    [".html", ".css", ".js", ".webmanifest"].some(ext => url.pathname.endsWith(ext));
+    [".html", ".css", ".js", ".json", ".webmanifest"].some(ext => url.pathname.endsWith(ext));
 
   if (shouldNetworkFirst) {
     event.respondWith(

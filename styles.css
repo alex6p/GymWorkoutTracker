@@ -333,6 +333,9 @@ h3{font-size:16px}
 .progress-bar{height:100%;width:0;background:var(--accent)}
 
 .settings-list{display:grid;gap:8px}
+.sync-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.sync-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.sync-actions .btn{min-width:120px}
 .setting-row{
   display:flex;
   justify-content:space-between;
@@ -439,6 +442,9 @@ body.modal-open{position:fixed;width:100%;overflow:hidden}
   .routine-actions,.timer-right,.active-exercise-controls{justify-content:flex-start}
   .field.compact{width:100%}
   .grid2,.search-row{grid-template-columns:1fr;display:grid}
+  .sync-grid{grid-template-columns:1fr}
+  .sync-actions{display:grid;grid-template-columns:1fr 1fr}
+  .sync-actions .btn{width:100%;min-width:0}
   .modal.picker-modal .sheet{height:82dvh;min-height:0}
   .set-table th:nth-child(2),.set-table td:nth-child(2){display:none}
   .duration-table th:nth-child(2),.duration-table td:nth-child(2){display:table-cell}

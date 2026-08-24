@@ -5,11 +5,17 @@
 
 const LS_KEY = "gym_tracker_v6";
 const LEGACY_KEYS = ["gym_tracker_v5","gym_tracker_v4","gym_tracker_v3","gym_tracker_v2","gym_tracker_v1"];
-const APP_VERSION = "6.1.0";
+const APP_VERSION = "7.0.0";
 const WEEKLY_PLAN_MIGRATION = "strength_rebuild_2026_08_24_v1";
 const BASELINE_SESSION_KEY = "upper_a_2026_08_17";
+const PUBLISHED_PLAN_PATH = "./data/current-plan.json";
+const PUBLISHED_SYNC_CONFIG_PATH = "./data/sync-config.json";
+const SYNC_LS_KEY = "lift_log_private_sync_v1";
 
 let state = loadState();
+let syncState = loadSyncState();
+let syncBusy = false;
+let syncRefreshPromise = null;
 saveState();
 let route = "workouts";
 let ui = {
@@ -42,6 +48,17 @@ const els = {
   blankWeightUsesBaselineToggle: $("blankWeightUsesBaselineToggle"),
   enableNotificationsBtn: $("enableNotificationsBtn"),
   notificationStatus: $("notificationStatus"),
+  syncStatus: $("syncStatus"),
+  syncDetails: $("syncDetails"),
+  supabaseUrlInput: $("supabaseUrlInput"),
+  supabaseKeyInput: $("supabaseKeyInput"),
+  syncEmailInput: $("syncEmailInput"),
+  syncPasswordInput: $("syncPasswordInput"),
+  saveSyncConfigBtn: $("saveSyncConfigBtn"),
+  signUpSyncBtn: $("signUpSyncBtn"),
+  signInSyncBtn: $("signInSyncBtn"),
+  syncNowBtn: $("syncNowBtn"),
+  signOutSyncBtn: $("signOutSyncBtn"),
   exportDataBtn: $("exportDataBtn"),
   customExercisesList: $("customExercisesList"),
   modal: $("modal"),
@@ -62,6 +79,11 @@ $("timerMinus").addEventListener("click", () => addTimer(-15));
 $("newExerciseBtn").addEventListener("click", () => openCustomExerciseModal(() => renderSettingsRoute()));
 els.enableNotificationsBtn.addEventListener("click", enableTimerNotifications);
 els.testTimerSoundBtn.addEventListener("click", testTimerSound);
+els.saveSyncConfigBtn?.addEventListener("click", saveSyncConfigFromForm);
+els.signUpSyncBtn?.addEventListener("click", () => void signUpForSync());
+els.signInSyncBtn?.addEventListener("click", () => void signInForSync());
+els.syncNowBtn?.addEventListener("click", () => void syncAllCompletedSessions({ silent:false }));
+els.signOutSyncBtn?.addEventListener("click", () => void signOutOfSync());
 els.exportDataBtn?.addEventListener("click", exportWorkoutData);
 els.modalBackdrop.addEventListener("click", closeModal);
 els.modalBackdrop.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
@@ -73,6 +95,7 @@ document.addEventListener("keydown", (event) => {
   if (!els.modal.classList.contains("hidden")) closeModal();
   else if (!els.drawer.classList.contains("hidden")) closeDrawer();
 });
+window.addEventListener("online", () => void syncAllCompletedSessions({ silent:true }));
 
 function DEFAULT_STATE(){
   const exercises = seedExercises();
@@ -81,6 +104,7 @@ function DEFAULT_STATE(){
     exercises,
     workouts: seedWorkouts(exercises),
     sessions: [],
+    publishedPlan: null,
     appMigrations: [],
     activeSessionId: null,
     timer: { running:false, total:0, remaining:0, endTs:null, label:"" }
@@ -320,6 +344,115 @@ function ensureTrainingPlanRoutines(s){
   }
 }
 
+function startingTargetReps(range, fallback = 10){
+  const match = String(range || "").match(/\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : fallback;
+}
+
+function validatePublishedPlan(plan){
+  const requiredKeys = ["strength-upper-a","strength-lower-a","strength-upper-b","strength-lower-b"];
+  if (!plan || plan.schemaVersion !== 1 || typeof plan.planId !== "string") return false;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(plan.planWeek || "")) return false;
+  if (!Array.isArray(plan.days) || plan.days.length !== 4) return false;
+  const keys = plan.days.map(day => day.planKey);
+  if (requiredKeys.some(key => !keys.includes(key)) || new Set(keys).size !== 4) return false;
+  return plan.days.every(day =>
+    typeof day.name === "string" &&
+    Number.isFinite(day.scheduleOrder) &&
+    Number.isFinite(day.durationMinutes) && day.durationMinutes >= 30 && day.durationMinutes <= 60 &&
+    Array.isArray(day.exercises) && day.exercises.length >= 4 && day.exercises.length <= 5 &&
+    day.exercises.every(item =>
+      typeof item.exerciseName === "string" && item.exerciseName.trim() &&
+      ["weight_reps","duration"].includes(item.trackingType) &&
+      Number.isFinite(item.targetSets) && item.targetSets >= 1 && item.targetSets <= 3 &&
+      typeof item.targetRepRange === "string" &&
+      Number.isFinite(item.restSeconds)
+    )
+  );
+}
+
+function workoutFromPublishedDay(day, idByName){
+  return {
+    id:uid(),
+    planKey:day.planKey,
+    scheduleOrder:day.scheduleOrder,
+    planWeek:day.planWeek,
+    name:day.name,
+    notes:[day.notes, state.publishedPlan?.progressionRule, state.publishedPlan?.safetyNote].filter(Boolean).join(" "),
+    exercises:day.exercises.map(item => {
+      const substitutions = (item.substitutions || []).filter(Boolean);
+      const notes = [item.notes, substitutions.length ? `Substitutions: ${substitutions.join(" or ")}.` : ""]
+        .filter(Boolean)
+        .join(" ");
+      return {
+        id:uid(),
+        exerciseId:idByName[item.exerciseName.toLowerCase()],
+        targetSets:Number(item.targetSets) || 1,
+        targetReps:startingTargetReps(item.targetRepRange, item.trackingType === "duration" ? 10 : 8),
+        targetRepRange:item.targetRepRange,
+        targetEffort:item.targetEffort || (Number.isFinite(item.targetRir) ? `${item.targetRir} RIR` : ""),
+        plannedLoadLb:Number.isFinite(item.plannedLoadLb) ? item.plannedLoadLb : null,
+        restSeconds:Number(item.restSeconds) || 0,
+        notes
+      };
+    }).filter(item => item.exerciseId)
+  };
+}
+
+function applyPublishedPlan(plan){
+  if (!validatePublishedPlan(plan)) throw new Error("Published weekly plan is invalid.");
+  if (state.publishedPlan?.planId === plan.planId) return false;
+  if (state.publishedPlan?.planWeek && state.publishedPlan.planWeek > plan.planWeek) return false;
+
+  for (const day of plan.days) {
+    day.planWeek = plan.planWeek;
+    for (const item of day.exercises) {
+      let exercise = state.exercises.find(entry => entry.name.toLowerCase() === item.exerciseName.toLowerCase());
+      if (!exercise) {
+        exercise = ex(item.exerciseName, item.muscleGroup || "Other", item.equipment || "Other", item.trackingType);
+        state.exercises.push(exercise);
+      } else {
+        exercise.trackingType = item.trackingType || exercise.trackingType || "weight_reps";
+      }
+    }
+  }
+
+  state.publishedPlan = {
+    planId:plan.planId,
+    planWeek:plan.planWeek,
+    generatedAt:plan.generatedAt || null,
+    reviewSummary:plan.reviewSummary || "",
+    progressionRule:plan.progressionRule || "",
+    safetyNote:plan.safetyNote || ""
+  };
+  const idByName = exerciseIdMap(state.exercises);
+  for (const day of plan.days) {
+    const fresh = workoutFromPublishedDay(day, idByName);
+    const existing = state.workouts.find(workout => workout.planKey === day.planKey);
+    if (existing) Object.assign(existing, fresh, { id:existing.id });
+    else state.workouts.push(fresh);
+  }
+  saveState();
+  return true;
+}
+
+async function refreshPublishedPlan(){
+  try {
+    const response = await fetch(PUBLISHED_PLAN_PATH, { cache:"no-store" });
+    if (!response.ok) throw new Error(`Plan request failed (${response.status})`);
+    const plan = await response.json();
+    const changed = applyPublishedPlan(plan);
+    if (changed) {
+      renderAll();
+      toast(`Plan updated for week of ${fmtPlanWeek(plan.planWeek)}`);
+    }
+    return changed;
+  } catch (error) {
+    console.warn("Weekly plan refresh skipped:", error);
+    return false;
+  }
+}
+
 function seedBaselineSession(s, idByName, upperADefinition){
   const hasSeed = s.sessions.some(session => session.seedKey === BASELINE_SESSION_KEY);
   const hasMatchingSession = s.sessions.some(session => {
@@ -439,6 +572,7 @@ function normalizeState(s){
   s.exercises = Array.isArray(s.exercises) ? s.exercises : [];
   s.workouts = Array.isArray(s.workouts) ? s.workouts : [];
   s.sessions = Array.isArray(s.sessions) ? s.sessions : [];
+  s.publishedPlan = s.publishedPlan && typeof s.publishedPlan === "object" ? s.publishedPlan : null;
   s.appMigrations = Array.isArray(s.appMigrations) ? s.appMigrations : [];
   s.exercises.forEach(exercise => { exercise.trackingType ||= "weight_reps"; });
   s.workouts.forEach(w => {
@@ -616,6 +750,7 @@ function exportTemplateExercise(item){
 function exportSession(session){
   const endedAt = Number.isFinite(session.endedAt) ? session.endedAt : null;
   return {
+    clientSessionId:session.id || null,
     workoutName:session.workoutName || "Workout",
     planWeek:session.planWeek || null,
     status:endedAt ? "completed" : "active",
@@ -675,6 +810,7 @@ function buildExportPayload(){
     app:{ name:"Lift Log", version:APP_VERSION },
     exportedAt:new Date().toISOString(),
     displayUnits:unitLabel(),
+    publishedPlan:state.publishedPlan,
     reviewInstructions:"Upload this JSON file to ChatGPT and ask it to review your completed workouts and adjust next week's four-day strength plan.",
     summary:{
       workoutTemplates:state.workouts.length,
@@ -743,6 +879,348 @@ async function exportWorkoutData(){
     els.exportDataBtn.disabled = false;
     els.exportDataBtn.textContent = originalText;
   }
+}
+
+function loadSyncState(){
+  const defaults = {
+    supabaseUrl:"",
+    supabasePublishableKey:"",
+    email:"",
+    accessToken:"",
+    refreshToken:"",
+    expiresAt:0,
+    userId:"",
+    lastSyncAt:0,
+    lastError:""
+  };
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SYNC_LS_KEY) || "null");
+    return parsed && typeof parsed === "object" ? { ...defaults, ...parsed } : defaults;
+  } catch {
+    return defaults;
+  }
+}
+
+function saveSyncState(){
+  localStorage.setItem(SYNC_LS_KEY, JSON.stringify(syncState));
+}
+
+function normalizedSupabaseUrl(value){
+  return String(value || "").trim().replace(/\/$/, "");
+}
+
+function syncConfigIsValid(){
+  try {
+    const url = new URL(syncState.supabaseUrl);
+    return url.protocol === "https:" && !!syncState.supabasePublishableKey;
+  } catch {
+    return false;
+  }
+}
+
+function syncUserFromToken(token){
+  try {
+    const rawPayload = token.split(".")[1].replace(/-/g,"+").replace(/_/g,"/");
+    const payload = rawPayload.padEnd(Math.ceil(rawPayload.length / 4) * 4, "=");
+    const bytes = atob(payload);
+    const encoded = Array.from(bytes, char => `%${char.charCodeAt(0).toString(16).padStart(2,"0")}`).join("");
+    const parsed = JSON.parse(decodeURIComponent(encoded));
+    return { id:parsed.sub || "", email:parsed.email || "" };
+  } catch {
+    return { id:"", email:"" };
+  }
+}
+
+function clearSyncSession(){
+  syncState.accessToken = "";
+  syncState.refreshToken = "";
+  syncState.expiresAt = 0;
+  syncState.userId = "";
+}
+
+function captureSyncConfigFromForm(){
+  const nextUrl = normalizedSupabaseUrl(els.supabaseUrlInput?.value);
+  const nextKey = String(els.supabaseKeyInput?.value || "").trim();
+  const changed = nextUrl !== syncState.supabaseUrl || nextKey !== syncState.supabasePublishableKey;
+  if (changed) clearSyncSession();
+  syncState.supabaseUrl = nextUrl;
+  syncState.supabasePublishableKey = nextKey;
+  syncState.email = String(els.syncEmailInput?.value || syncState.email || "").trim();
+  syncState.lastError = "";
+  saveSyncState();
+  return syncConfigIsValid();
+}
+
+function saveSyncConfigFromForm(){
+  if (!captureSyncConfigFromForm()) {
+    renderSyncSettings();
+    return toast("Enter a valid HTTPS project URL and publishable key.");
+  }
+  renderSyncSettings();
+  toast("Sync connection saved");
+}
+
+function authHeaders(token = syncState.supabasePublishableKey){
+  return {
+    apikey:syncState.supabasePublishableKey,
+    Authorization:`Bearer ${token}`,
+    "Content-Type":"application/json",
+    Accept:"application/json"
+  };
+}
+
+async function responseJsonOrError(response, label){
+  const text = await response.text();
+  let payload = {};
+  try { payload = text ? JSON.parse(text) : {}; } catch { payload = { message:text }; }
+  if (!response.ok) {
+    throw new Error(payload.msg || payload.message || payload.error_description || payload.error || `${label} failed (${response.status})`);
+  }
+  return payload;
+}
+
+function applySyncSession(payload){
+  if (!payload?.access_token) return false;
+  const tokenUser = syncUserFromToken(payload.access_token);
+  syncState.accessToken = payload.access_token;
+  syncState.refreshToken = payload.refresh_token || syncState.refreshToken;
+  syncState.expiresAt = Number(payload.expires_at)
+    ? Number(payload.expires_at) * 1000
+    : Date.now() + (Number(payload.expires_in) || 3600) * 1000;
+  syncState.userId = payload.user?.id || tokenUser.id || syncState.userId;
+  syncState.email = payload.user?.email || tokenUser.email || syncState.email;
+  syncState.lastError = "";
+  saveSyncState();
+  return true;
+}
+
+async function ensureFreshSyncSession(){
+  if (syncState.accessToken && syncState.expiresAt > Date.now() + 90000) return syncState.accessToken;
+  if (!syncConfigIsValid() || !syncState.refreshToken) throw new Error("Sign in to enable private workout sync.");
+  if (syncRefreshPromise) return syncRefreshPromise;
+  syncRefreshPromise = (async () => {
+    const response = await fetch(`${syncState.supabaseUrl}/auth/v1/token?grant_type=refresh_token`, {
+      method:"POST",
+      headers:authHeaders(),
+      body:JSON.stringify({ refresh_token:syncState.refreshToken })
+    });
+    const payload = await responseJsonOrError(response, "Session refresh");
+    applySyncSession(payload);
+    return syncState.accessToken;
+  })().finally(() => { syncRefreshPromise = null; });
+  return syncRefreshPromise;
+}
+
+function setSyncBusy(busy){
+  syncBusy = busy;
+  renderSyncSettings();
+}
+
+async function signUpForSync(){
+  if (!captureSyncConfigFromForm()) return toast("Save a valid Supabase connection first.");
+  const email = String(els.syncEmailInput?.value || "").trim();
+  const password = String(els.syncPasswordInput?.value || "");
+  if (!email || password.length < 8) return toast("Enter your email and a password with at least 8 characters.");
+  let shouldSync = false;
+  setSyncBusy(true);
+  try {
+    const response = await fetch(`${syncState.supabaseUrl}/auth/v1/signup`, {
+      method:"POST",
+      headers:authHeaders(),
+      body:JSON.stringify({ email, password })
+    });
+    const payload = await responseJsonOrError(response, "Account creation");
+    syncState.email = email;
+    if (payload.access_token) {
+      applySyncSession(payload);
+      shouldSync = true;
+      toast("Account created and connected");
+    } else {
+      saveSyncState();
+      toast("Account created. Confirm the email, then sign in.");
+    }
+  } catch (error) {
+    syncState.lastError = error.message;
+    saveSyncState();
+    toast(error.message);
+  } finally {
+    if (els.syncPasswordInput) els.syncPasswordInput.value = "";
+    setSyncBusy(false);
+    if (shouldSync) void syncAllCompletedSessions({ silent:true, force:true });
+  }
+}
+
+async function signInForSync(){
+  if (!captureSyncConfigFromForm()) return toast("Save a valid Supabase connection first.");
+  const email = String(els.syncEmailInput?.value || "").trim();
+  const password = String(els.syncPasswordInput?.value || "");
+  if (!email || !password) return toast("Enter your sync email and password.");
+  let shouldSync = false;
+  setSyncBusy(true);
+  try {
+    const response = await fetch(`${syncState.supabaseUrl}/auth/v1/token?grant_type=password`, {
+      method:"POST",
+      headers:authHeaders(),
+      body:JSON.stringify({ email, password })
+    });
+    const payload = await responseJsonOrError(response, "Sign in");
+    applySyncSession(payload);
+    shouldSync = true;
+    toast("Private sync connected");
+  } catch (error) {
+    syncState.lastError = error.message;
+    saveSyncState();
+    toast(error.message);
+  } finally {
+    if (els.syncPasswordInput) els.syncPasswordInput.value = "";
+    setSyncBusy(false);
+    if (shouldSync) void syncAllCompletedSessions({ silent:true, force:true });
+  }
+}
+
+async function signOutOfSync(){
+  setSyncBusy(true);
+  try {
+    if (syncState.accessToken && syncConfigIsValid()) {
+      await fetch(`${syncState.supabaseUrl}/auth/v1/logout`, {
+        method:"POST",
+        headers:authHeaders(syncState.accessToken)
+      });
+    }
+  } catch (error) {
+    console.warn("Remote sign out failed:", error);
+  } finally {
+    clearSyncSession();
+    syncState.lastError = "";
+    saveSyncState();
+    setSyncBusy(false);
+    toast("Sync account signed out");
+  }
+}
+
+async function upsertCompletedSessions(sessions, retried = false){
+  const accessToken = await ensureFreshSyncSession();
+  const now = new Date().toISOString();
+  const rows = sessions.map(session => ({
+    client_session_id:session.id,
+    workout_name:session.workoutName || "Workout",
+    plan_week:session.planWeek || null,
+    started_at:new Date(session.startedAt).toISOString(),
+    ended_at:new Date(session.endedAt).toISOString(),
+    payload:exportSession(session),
+    app_version:APP_VERSION,
+    updated_at:now
+  }));
+  const response = await fetch(`${syncState.supabaseUrl}/rest/v1/workout_sessions?on_conflict=user_id,client_session_id`, {
+    method:"POST",
+    headers:{
+      ...authHeaders(accessToken),
+      Prefer:"resolution=merge-duplicates,return=minimal"
+    },
+    body:JSON.stringify(rows)
+  });
+  if (response.status === 401 && !retried && syncState.refreshToken) {
+    syncState.accessToken = "";
+    syncState.expiresAt = 0;
+    saveSyncState();
+    await ensureFreshSyncSession();
+    return upsertCompletedSessions(sessions, true);
+  }
+  await responseJsonOrError(response, "Workout sync");
+}
+
+async function syncAllCompletedSessions({ silent = true, force = false } = {}){
+  if (syncBusy || !navigator.onLine || !syncConfigIsValid() || (!syncState.accessToken && !syncState.refreshToken)) {
+    if (!silent && !syncConfigIsValid()) toast("Configure private sync in Settings first.");
+    else if (!silent && !navigator.onLine) toast("Offline. Workouts will sync when you reconnect.");
+    else if (!silent && !syncState.refreshToken) toast("Sign in to sync workouts.");
+    renderSyncSettings();
+    return false;
+  }
+  const sessions = completedSessions().filter(session => force || !session.syncedAt);
+  if (!sessions.length) {
+    if (!silent) toast("All completed workouts are synced");
+    renderSyncSettings();
+    return true;
+  }
+
+  setSyncBusy(true);
+  try {
+    await upsertCompletedSessions(sessions);
+    const syncedAt = Date.now();
+    sessions.forEach(session => {
+      session.syncedAt = syncedAt;
+      session.syncError = "";
+    });
+    syncState.lastSyncAt = syncedAt;
+    syncState.lastError = "";
+    saveState();
+    saveSyncState();
+    if (!silent) toast(`${sessions.length} workout${sessions.length === 1 ? "" : "s"} synced`);
+    return true;
+  } catch (error) {
+    syncState.lastError = error.message;
+    sessions.forEach(session => { session.syncError = error.message; });
+    saveState();
+    saveSyncState();
+    console.error("Workout sync failed:", error);
+    if (!silent) toast(`Sync failed: ${error.message}`);
+    return false;
+  } finally {
+    setSyncBusy(false);
+  }
+}
+
+async function loadPublishedSyncConfig(){
+  try {
+    const response = await fetch(PUBLISHED_SYNC_CONFIG_PATH, { cache:"no-store" });
+    if (!response.ok) return false;
+    const config = await response.json();
+    const url = normalizedSupabaseUrl(config.supabaseUrl);
+    const key = String(config.supabasePublishableKey || "").trim();
+    if (!url || !key) return false;
+    const changed = url !== syncState.supabaseUrl || key !== syncState.supabasePublishableKey;
+    if (changed) clearSyncSession();
+    syncState.supabaseUrl = url;
+    syncState.supabasePublishableKey = key;
+    saveSyncState();
+    return true;
+  } catch (error) {
+    console.warn("Published sync configuration unavailable:", error);
+    return false;
+  }
+}
+
+function renderSyncSettings(){
+  if (!els.syncStatus) return;
+  const configured = syncConfigIsValid();
+  const connected = configured && (!!syncState.accessToken || !!syncState.refreshToken) && !!syncState.userId;
+  const pending = completedSessions().filter(session => !session.syncedAt).length;
+  els.syncStatus.textContent = syncBusy ? "Working..." : connected ? "Connected" : configured ? "Sign in required" : "Not configured";
+  els.syncStatus.classList.toggle("pr", connected);
+  if (document.activeElement !== els.supabaseUrlInput) els.supabaseUrlInput.value = syncState.supabaseUrl;
+  if (document.activeElement !== els.supabaseKeyInput) els.supabaseKeyInput.value = syncState.supabasePublishableKey;
+  if (document.activeElement !== els.syncEmailInput) els.syncEmailInput.value = syncState.email;
+  const details = [];
+  if (connected) details.push(`Connected as ${syncState.email || syncState.userId}`);
+  details.push(`${pending} completed workout${pending === 1 ? "" : "s"} waiting to sync`);
+  if (syncState.lastSyncAt) details.push(`last synced ${fmtDateTime(syncState.lastSyncAt)}`);
+  if (syncState.lastError) details.push(`last error: ${syncState.lastError}`);
+  els.syncDetails.textContent = details.join(" - ") + ". Your password is never saved.";
+  [els.saveSyncConfigBtn, els.signUpSyncBtn, els.signInSyncBtn, els.syncNowBtn, els.signOutSyncBtn]
+    .filter(Boolean)
+    .forEach(button => { button.disabled = syncBusy; });
+  els.syncNowBtn.disabled = syncBusy || !connected;
+  els.signOutSyncBtn.disabled = syncBusy || !connected;
+}
+
+async function initializeCloudFeatures(){
+  await loadPublishedSyncConfig();
+  await Promise.all([
+    refreshPublishedPlan(),
+    syncAllCompletedSessions({ silent:true })
+  ]);
+  renderSyncSettings();
 }
 
 function openDrawer(){
@@ -1127,6 +1605,7 @@ function finishWorkout(){
   ui.history = { screen:"detail", sessionId:sess.id };
   setRoute("history");
   toast("Workout saved");
+  void syncAllCompletedSessions({ silent:true });
 }
 function discardWorkout(){
   const sess = getActiveSession();
@@ -1876,6 +2355,7 @@ function renderHistoryDetail(){
 function renderSettingsRoute(){
   if (route !== "settings") return;
   renderNotificationStatus();
+  renderSyncSettings();
   els.unitsToggle.checked = !!state.settings.isKg;
   els.autoRestToggle.checked = !!state.settings.autoRest;
   els.timerSoundToggle.checked = !!state.settings.timerSound;
@@ -1924,6 +2404,7 @@ function resetAllData(){
 renderAll();
 setRoute("workouts");
 startWorkoutClock();
+void initializeCloudFeatures();
 if (state.timer.running && state.timer.endTs) {
   els.timerBar.classList.remove("hidden");
   els.timerSub.textContent = state.timer.label || "Ready for the next set";
