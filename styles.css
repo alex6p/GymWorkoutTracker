@@ -230,6 +230,7 @@ h3{font-size:16px}
 }
 .active-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .workout-notes{width:100%;min-height:70px;margin-top:12px}
+.session-rpe{width:min(240px,100%);margin-top:10px}
 
 .exercise-card{margin:12px}
 .exercise-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:10px}
@@ -263,6 +264,9 @@ h3{font-size:16px}
   font-weight:700;
 }
 .set-table{width:100%;border-collapse:collapse;table-layout:fixed}
+.table-scroll{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.table-scroll .set-table{min-width:650px}
+.table-scroll .set-table.duration-table{min-width:420px}
 .set-table th,.set-table td{border-top:1px solid var(--line);padding:8px 5px;text-align:left;font-size:14px}
 .set-table th{color:var(--soft);font-size:12px;font-weight:900}
 .set-table tr.is-complete td{
@@ -437,5 +441,9 @@ body.modal-open{position:fixed;width:100%;overflow:hidden}
   .grid2,.search-row{grid-template-columns:1fr;display:grid}
   .modal.picker-modal .sheet{height:82dvh;min-height:0}
   .set-table th:nth-child(2),.set-table td:nth-child(2){display:none}
+  .duration-table th:nth-child(2),.duration-table td:nth-child(2){display:table-cell}
+  .table-scroll .set-table{min-width:520px}
+  .table-scroll .set-table.duration-table{min-width:340px}
+  #exportDataBtn{width:100%}
   h1{font-size:24px}
 }

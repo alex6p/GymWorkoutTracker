@@ -5,8 +5,12 @@
 
 const LS_KEY = "gym_tracker_v6";
 const LEGACY_KEYS = ["gym_tracker_v5","gym_tracker_v4","gym_tracker_v3","gym_tracker_v2","gym_tracker_v1"];
+const APP_VERSION = "6.1.0";
+const WEEKLY_PLAN_MIGRATION = "strength_rebuild_2026_08_24_v1";
+const BASELINE_SESSION_KEY = "upper_a_2026_08_17";
 
 let state = loadState();
+saveState();
 let route = "workouts";
 let ui = {
   workouts: { screen: "list", workoutId: null },
@@ -38,6 +42,7 @@ const els = {
   blankWeightUsesBaselineToggle: $("blankWeightUsesBaselineToggle"),
   enableNotificationsBtn: $("enableNotificationsBtn"),
   notificationStatus: $("notificationStatus"),
+  exportDataBtn: $("exportDataBtn"),
   customExercisesList: $("customExercisesList"),
   modal: $("modal"),
   modalBackdrop: $("modalBackdrop"),
@@ -57,6 +62,7 @@ $("timerMinus").addEventListener("click", () => addTimer(-15));
 $("newExerciseBtn").addEventListener("click", () => openCustomExerciseModal(() => renderSettingsRoute()));
 els.enableNotificationsBtn.addEventListener("click", enableTimerNotifications);
 els.testTimerSoundBtn.addEventListener("click", testTimerSound);
+els.exportDataBtn?.addEventListener("click", exportWorkoutData);
 els.modalBackdrop.addEventListener("click", closeModal);
 els.modalBackdrop.addEventListener("touchmove", (e) => e.preventDefault(), { passive:false });
 document.addEventListener("pointerdown", unlockTimerAudio, { once:true, passive:true });
@@ -75,6 +81,7 @@ function DEFAULT_STATE(){
     exercises,
     workouts: seedWorkouts(exercises),
     sessions: [],
+    appMigrations: [],
     activeSessionId: null,
     timer: { running:false, total:0, remaining:0, endTs:null, label:"" }
   };
@@ -110,7 +117,7 @@ function seedExercises(){
       seen.add(key);
       return true;
     })
-    .map(([name, muscleGroup, equipment]) => ex(name, muscleGroup, equipment));
+    .map(([name, muscleGroup, equipment, trackingType]) => ex(name, muscleGroup, equipment, trackingType));
 }
 
 function seedWorkouts(exercises){
@@ -121,7 +128,7 @@ function seedWorkouts(exercises){
     notes: "",
     exercises: rows.map(([exerciseName, sets, reps, rest]) => ({
       id: uid(),
-      exerciseId: idByName[exerciseName],
+      exerciseId: idByName[exerciseName.toLowerCase()],
       targetSets: sets,
       targetReps: reps,
       restSeconds: rest,
@@ -154,81 +161,100 @@ function seedWorkouts(exercises){
   ];
 }
 
-function ex(name, muscleGroup, equipment){
-  return { id: uid(), name, muscleGroup, equipment, notes:"", isCustom:false };
+function ex(name, muscleGroup, equipment, trackingType = "weight_reps"){
+  return { id: uid(), name, muscleGroup, equipment, trackingType, notes:"", isCustom:false };
 }
 
 function trainingPlanExerciseDefs(){
   return [
-    ["Barbell Bench Press","Chest","Barbell"],
+    ["Smith Machine Bench Press","Chest","Smith Machine"],
     ["Chest-Supported Row","Back","Machine"],
     ["Neutral-Grip Pulldown","Back","Cable"],
     ["Cable Lateral Raise","Shoulders","Cable"],
     ["Rope Pressdown","Arms","Cable"],
-    ["Back Squat","Legs","Barbell"],
-    ["Seated or Lying Leg Curl","Legs","Machine"],
+    ["Seated Leg Curl","Legs","Machine"],
     ["Standing Calf Raise","Legs","Machine"],
-    ["Seated Dumbbell Overhead Press","Shoulders","Dumbbells"],
-    ["Assisted Pull-Up","Back","Machine"],
+    ["Elliptical (Optional)","Cardio","Elliptical","duration"],
     ["Seated Cable Row","Back","Cable"],
+    ["Machine Shoulder Press","Shoulders","Machine"],
     ["Cable Curl","Arms","Cable"],
     ["Reverse Pec Deck","Shoulders","Machine"],
-    ["Trap-Bar Deadlift","Legs","Trap Bar"],
-    ["Reverse Lunge","Legs","Dumbbells"],
-    ["Seated Leg Curl","Legs","Machine"]
+    ["Hack Squat","Legs","Machine"],
+    ["Hip Thrust","Legs","Barbell or Machine"],
+    ["Leg Extension","Legs","Machine"],
+    ["Seated Calf Raise","Legs","Machine"],
+    ["StairMaster (Optional)","Cardio","StairMaster","duration"]
   ];
 }
 
 function trainingPlanRoutineDefs(){
+  const progression = "Double progression: keep the same load until every work set reaches the top of the rep range at the target RIR. Then add about 5 lb to upper-body lifts or 5-10 lb to lower-body lifts. Stop any movement that causes sharp or worsening pain and use a pain-free substitute.";
   return [
     {
-      name: "Day 1 - Upper A",
-      notes: "40-48 minutes. Progression: when you hit the top of the rep range with the listed RIR, add weight next time.",
+      planKey: "strength-upper-a",
+      scheduleOrder: 1,
+      planWeek: "2026-08-24",
+      legacyNames: ["Day 1 - Upper A", "1 • Upper A (Monday)"],
+      name: "1 - Upper A (Monday)",
+      notes: `About 40-50 minutes including a 5-minute warm-up. ${progression}`,
       rows: [
-        planRow("Barbell Bench Press", 3, 8, 180, "Reps: 5-8. Effort: 3 RIR. Rest: 2.5-3 min. Substitute: Dumbbell or machine press."),
-        planRow("Chest-Supported Row", 3, 10, 120, "Reps: 6-10. Effort: 2-3 RIR. Rest: 2 min. Substitute: Seated cable row."),
-        planRow("Neutral-Grip Pulldown", 2, 12, 90, "Reps: 8-12. Effort: 2 RIR. Rest: 90 sec. Substitute: Assisted pull-up."),
-        planRow("Cable Lateral Raise", 2, 15, 60, "Reps: 12-15. Effort: 2-3 RIR. Superset with rope pressdown. Substitute: Dumbbell lateral raise."),
-        planRow("Rope Pressdown", 2, 15, 60, "Reps: 10-15. Effort: 2 RIR. Rest: 60 sec after pair. Substitute: Machine dip.")
+        planRow("Smith Machine Bench Press", 3, 6, "6-8", 180, "2 RIR; final set may reach 1", "Use 135 lb x 10 as the final warm-up, then work at 155 lb. Try to add one total work rep. Substitute: machine chest press or dumbbell bench.", 155),
+        planRow("Chest-Supported Row", 3, 6, "6-8", 120, "2 RIR", "Stay at 145 lb. Three productive work sets are enough; aim for about 7/6/6. Substitute: seated cable row.", 145),
+        planRow("Neutral-Grip Pulldown", 2, 8, "8-12", 90, "2 RIR", "Stay at 105 lb and aim for at least 17-18 total reps. Substitute: assisted neutral-grip pull-up.", 105),
+        planRow("Cable Lateral Raise", 2, 12, "12-15", 60, "2-3 RIR", "Use last week's weight. Superset with rope pressdowns. Substitute: dumbbell lateral raise."),
+        planRow("Rope Pressdown", 2, 12, "12-15", 60, "2 RIR", "Stay at 30 lb and aim for 13 reps per set before increasing. Superset after lateral raises.", 30)
       ]
     },
     {
-      name: "Day 2 - Lower A",
-      notes: "40-47 minutes. Progression: when you hit the top of the rep range with the listed RIR, add weight next time.",
+      planKey: "strength-lower-a",
+      scheduleOrder: 2,
+      planWeek: "2026-08-24",
+      legacyNames: ["Day 2 - Lower A", "2 • Lower A (Tuesday)"],
+      name: "2 - Lower A (Tuesday)",
+      notes: `About 40-50 minutes including a 5-minute warm-up. Repeat prior lower-body loads because no results were reported. ${progression}`,
       rows: [
-        planRow("Back Squat", 3, 8, 180, "Reps: 5-8. Effort: 3 RIR. Rest: 3 min. Substitute: Hack squat or Smith box squat."),
-        planRow("Romanian Deadlift", 3, 10, 180, "Reps: 6-10. Effort: 3 RIR. Rest: 2-3 min. Substitute: 45 degree back extension."),
-        planRow("Seated or Lying Leg Curl", 2, 15, 75, "Reps: 10-15. Effort: 2 RIR. Superset with standing calf raise. Substitute: Stability-ball curl."),
-        planRow("Standing Calf Raise", 2, 15, 75, "Reps: 10-15. Effort: 2 RIR. Rest: 60-75 sec after pair. Substitute: Leg-press calf raise.")
+        planRow("Leg Press", 3, 6, "6-10", 180, "2-3 RIR", "Repeat your previous load. Substitute: Smith-machine squat."),
+        planRow("Romanian Deadlift", 3, 6, "6-10", 180, "2-3 RIR", "Repeat your previous load. Substitute: cable pull-through or 45-degree back extension."),
+        planRow("Seated Leg Curl", 2, 10, "10-15", 75, "2 RIR", "Superset with standing calf raises if the machines are close."),
+        planRow("Standing Calf Raise", 2, 10, "10-15", 75, "2 RIR", "Rest after completing the superset pair."),
+        planRow("Elliptical (Optional)", 1, 10, "8-12 min", 0, "Easy conversational pace", "Optional after lifting. Skip it if your legs are unusually fatigued.")
       ]
     },
     {
-      name: "Day 3 - Upper B",
-      notes: "45-52 minutes. Progression: when you hit the top of the rep range with the listed RIR, add weight next time.",
+      planKey: "strength-upper-b",
+      scheduleOrder: 3,
+      planWeek: "2026-08-24",
+      legacyNames: ["Day 3 - Upper B", "3 • Upper B (Thursday)"],
+      name: "3 - Upper B (Thursday)",
+      notes: `About 40-50 minutes including a 5-minute warm-up. ${progression}`,
       rows: [
-        planRow("Seated Dumbbell Overhead Press", 3, 8, 180, "Reps: 5-8. Effort: 3 RIR. Rest: 2-3 min. Substitute: Machine shoulder press."),
-        planRow("Assisted Pull-Up", 3, 10, 120, "Reps: 6-10. Effort: 2-3 RIR. Rest: 2 min. Substitute: Lat pulldown."),
-        planRow("Incline Dumbbell Press", 2, 12, 90, "Reps: 8-12. Effort: 2 RIR. Rest: 90 sec. Substitute: Incline machine press."),
-        planRow("Seated Cable Row", 2, 12, 90, "Reps: 8-12. Effort: 2 RIR. Rest: 90 sec. Substitute: Machine row."),
-        planRow("Cable Curl", 2, 15, 60, "Reps: 10-15. Effort: 2 RIR. Superset with reverse pec deck. Substitute: Dumbbell curl."),
-        planRow("Reverse Pec Deck", 2, 15, 60, "Reps: 12-15. Effort: 2-3 RIR. Rest: 60 sec after pair. Substitute: Cable rear-delt fly.")
+        planRow("Incline Dumbbell Press", 3, 6, "6-10", 180, "2 RIR", "Repeat your prior load unless every set was comfortably inside the range. Substitute: incline machine press."),
+        planRow("Seated Cable Row", 3, 8, "8-12", 120, "2 RIR", "Substitute: chest-supported machine row."),
+        planRow("Machine Shoulder Press", 2, 8, "8-12", 120, "2-3 RIR", "Substitute: seated dumbbell overhead press."),
+        planRow("Reverse Pec Deck", 2, 12, "12-15", 75, "2 RIR", "Superset with cable curls."),
+        planRow("Cable Curl", 2, 10, "10-15", 75, "2 RIR", "Rest after completing the superset pair.")
       ]
     },
     {
-      name: "Day 4 - Lower B",
-      notes: "42-50 minutes. Progression: when you hit the top of the rep range with the listed RIR, add weight next time.",
+      planKey: "strength-lower-b",
+      scheduleOrder: 4,
+      planWeek: "2026-08-24",
+      legacyNames: ["Day 4 - Lower B", "4 • Lower B + StairMaster (Friday)"],
+      name: "4 - Lower B + StairMaster (Friday)",
+      notes: `About 40-50 minutes including a 5-minute warm-up and optional cardio. ${progression}`,
       rows: [
-        planRow("Trap-Bar Deadlift", 3, 6, 180, "Reps: 4-6. Effort: 3 RIR. Rest: 3 min. Substitute: Conventional deadlift or heavy leg press."),
-        planRow("Leg Press", 3, 12, 120, "Reps: 8-12. Effort: 2-3 RIR. Rest: 2 min. Substitute: Hack squat."),
-        planRow("Reverse Lunge", 2, 10, 90, "Reps: 8-10 per leg. Effort: 2-3 RIR. Rest: 90 sec. Substitute: Split squat or step-up."),
-        planRow("Seated Leg Curl", 2, 15, 90, "Reps: 10-15. Effort: 2 RIR. Rest: 75-90 sec. Substitute: Lying leg curl.")
+        planRow("Hack Squat", 3, 6, "6-10", 180, "2-3 RIR", "Repeat your previous load. Substitute: Smith-machine squat or leg press."),
+        planRow("Hip Thrust", 3, 8, "8-12", 120, "2 RIR", "Substitute: glute-drive machine."),
+        planRow("Leg Extension", 2, 10, "10-15", 75, "2 RIR", "Use smooth, controlled reps."),
+        planRow("Seated Calf Raise", 2, 10, "10-15", 75, "2 RIR", "Keep the full range of motion."),
+        planRow("StairMaster (Optional)", 1, 10, "8-12 min", 0, "RPE 5-6", "Use a steady, moderate pace after lifting. It should feel like cardio, not another hard leg workout. Elliptical is an equal substitute.")
       ]
     }
   ];
 }
 
-function planRow(exerciseName, sets, reps, restSeconds, notes){
-  return { exerciseName, sets, reps, restSeconds, notes };
+function planRow(exerciseName, sets, reps, targetRepRange, restSeconds, targetEffort, notes, plannedLoadLb = null){
+  return { exerciseName, sets, reps, targetRepRange, restSeconds, targetEffort, notes, plannedLoadLb };
 }
 
 function exerciseIdMap(exercises){
@@ -238,6 +264,9 @@ function exerciseIdMap(exercises){
 function workoutFromPlanDefinition(def, idByName){
   return {
     id: uid(),
+    planKey: def.planKey,
+    scheduleOrder: def.scheduleOrder,
+    planWeek: def.planWeek,
     name: def.name,
     notes: def.notes,
     exercises: def.rows.map(row => ({
@@ -245,6 +274,9 @@ function workoutFromPlanDefinition(def, idByName){
       exerciseId: idByName[row.exerciseName.toLowerCase()],
       targetSets: row.sets,
       targetReps: row.reps,
+      targetRepRange: row.targetRepRange,
+      targetEffort: row.targetEffort,
+      plannedLoadLb: Number.isFinite(row.plannedLoadLb) ? row.plannedLoadLb : null,
       restSeconds: row.restSeconds,
       notes: row.notes
     })).filter(x => x.exerciseId)
@@ -253,18 +285,114 @@ function workoutFromPlanDefinition(def, idByName){
 
 function ensureTrainingPlanRoutines(s){
   const exerciseDefs = trainingPlanExerciseDefs();
-  for (const [name, muscleGroup, equipment] of exerciseDefs) {
-    if (!s.exercises.some(e => e.name.toLowerCase() === name.toLowerCase())) {
-      s.exercises.push(ex(name, muscleGroup, equipment));
+  for (const [name, muscleGroup, equipment, trackingType] of exerciseDefs) {
+    const existing = s.exercises.find(e => e.name.toLowerCase() === name.toLowerCase());
+    if (!existing) {
+      s.exercises.push(ex(name, muscleGroup, equipment, trackingType));
+    } else {
+      existing.trackingType ||= trackingType || "weight_reps";
     }
   }
 
   const idByName = exerciseIdMap(s.exercises);
-  for (const def of trainingPlanRoutineDefs()) {
-    if (!s.workouts.some(w => w.name.toLowerCase() === def.name.toLowerCase())) {
-      s.workouts.push(workoutFromPlanDefinition(def, idByName));
+  const planDefs = trainingPlanRoutineDefs();
+  const needsUpgrade = !s.appMigrations.includes(WEEKLY_PLAN_MIGRATION);
+
+  for (const def of planDefs) {
+    const names = [def.name, ...(def.legacyNames || [])].map(name => name.toLowerCase());
+    const existing = s.workouts.find(w => w.planKey === def.planKey || names.includes(w.name.toLowerCase()));
+    const fresh = workoutFromPlanDefinition(def, idByName);
+
+    if (!existing) {
+      s.workouts.push(fresh);
+    } else if (needsUpgrade) {
+      Object.assign(existing, fresh, { id:existing.id });
+    } else {
+      existing.planKey ||= def.planKey;
+      existing.scheduleOrder ??= def.scheduleOrder;
+      existing.planWeek ||= def.planWeek;
     }
   }
+
+  if (needsUpgrade) {
+    seedBaselineSession(s, idByName, planDefs[0]);
+    s.appMigrations.push(WEEKLY_PLAN_MIGRATION);
+  }
+}
+
+function seedBaselineSession(s, idByName, upperADefinition){
+  const hasSeed = s.sessions.some(session => session.seedKey === BASELINE_SESSION_KEY);
+  const hasMatchingSession = s.sessions.some(session => {
+    if (!Number.isFinite(session.startedAt)) return false;
+    const sameDay = new Date(session.startedAt).toISOString().slice(0,10) === "2026-08-17";
+    const hasBench155 = (session.exercises || []).some(item =>
+      (item.sets || []).some(set => Number(set.weightLb) === 155 && Number(set.reps) === 6));
+    return sameDay && hasBench155;
+  });
+  if (hasSeed || hasMatchingSession) return;
+
+  const endedAt = Date.parse("2026-08-17T18:00:00-04:00");
+  const startedAt = endedAt - 42 * 60 * 1000;
+  let createdAt = startedAt;
+  const rowByName = Object.fromEntries(upperADefinition.rows.map(row => [row.exerciseName, row]));
+  const workout = s.workouts.find(item => item.planKey === upperADefinition.planKey);
+  const makeSets = rows => rows.map((row, index) => ({
+    id:uid(),
+    setNumber:index + 1,
+    type:row.type || "normal",
+    reps:row.reps,
+    weightLb:Number.isFinite(row.weightLb) ? row.weightLb : 0,
+    rir:Number.isFinite(row.rir) ? row.rir : null,
+    done:true,
+    createdAt:(createdAt += 90 * 1000)
+  }));
+  const makeExercise = (exerciseName, orderIndex, sets) => {
+    const row = rowByName[exerciseName];
+    return {
+      id:uid(),
+      orderIndex,
+      exerciseId:idByName[exerciseName.toLowerCase()],
+      targetSets:row.sets,
+      targetReps:row.reps,
+      targetRepRange:row.targetRepRange,
+      targetEffort:row.targetEffort,
+      plannedLoadLb:Number.isFinite(row.plannedLoadLb) ? row.plannedLoadLb : null,
+      restSeconds:row.restSeconds,
+      notes:row.notes,
+      sets:makeSets(sets)
+    };
+  };
+
+  s.sessions.push({
+    id:uid(),
+    seedKey:BASELINE_SESSION_KEY,
+    workoutId:workout?.id || null,
+    workoutName:"1 - Upper A (Monday)",
+    planWeek:"2026-08-17",
+    notes:"Completed in 42 minutes.",
+    startedAt,
+    endedAt,
+    exercises:[
+      makeExercise("Smith Machine Bench Press", 0, [
+        { reps:10, weightLb:135, type:"warmup" },
+        { reps:6, weightLb:155 },
+        { reps:6, weightLb:155, rir:1 }
+      ]),
+      makeExercise("Chest-Supported Row", 1, [
+        { reps:6, weightLb:145 }, { reps:6, weightLb:145 },
+        { reps:6, weightLb:145 }, { reps:6, weightLb:145 }
+      ]),
+      makeExercise("Neutral-Grip Pulldown", 2, [
+        { reps:8, weightLb:105 }, { reps:8, weightLb:105 }
+      ]),
+      makeExercise("Cable Lateral Raise", 3, [
+        { reps:12 }, { reps:12 }
+      ]),
+      makeExercise("Rope Pressdown", 4, [
+        { reps:12, weightLb:30 }, { reps:12, weightLb:30 }
+      ])
+    ]
+  });
 }
 
 function loadState(){
@@ -282,7 +410,7 @@ function loadState(){
       return migrated;
     } catch {}
   }
-  return defaults;
+  return normalizeState(defaults);
 }
 
 function migrateLegacy(old, defaults){
@@ -311,24 +439,40 @@ function normalizeState(s){
   s.exercises = Array.isArray(s.exercises) ? s.exercises : [];
   s.workouts = Array.isArray(s.workouts) ? s.workouts : [];
   s.sessions = Array.isArray(s.sessions) ? s.sessions : [];
+  s.appMigrations = Array.isArray(s.appMigrations) ? s.appMigrations : [];
+  s.exercises.forEach(exercise => { exercise.trackingType ||= "weight_reps"; });
   s.workouts.forEach(w => {
     w.notes ||= "";
     w.exercises = Array.isArray(w.exercises) ? w.exercises : [];
     w.exercises.forEach(te => {
       te.targetSets ||= 3;
       te.targetReps ||= 10;
-      te.restSeconds ||= 90;
+      te.restSeconds = Number.isFinite(Number(te.restSeconds)) ? Number(te.restSeconds) : 90;
+      te.targetRepRange ||= String(te.targetReps);
+      te.targetEffort ||= "";
+      te.plannedLoadLb = Number.isFinite(te.plannedLoadLb) ? te.plannedLoadLb : null;
       te.notes ||= "";
     });
   });
   s.sessions.forEach(sess => {
     sess.notes ||= "";
+    sess.sessionRpe = Number.isFinite(sess.sessionRpe) ? sess.sessionRpe : null;
     sess.exercises = Array.isArray(sess.exercises) ? sess.exercises : [];
     sess.exercises.forEach(se => {
+      const trackingType = s.exercises.find(exercise => exercise.id === se.exerciseId)?.trackingType || "weight_reps";
       se.notes ||= "";
+      se.targetRepRange ||= String(se.targetReps || "");
+      se.targetEffort ||= "";
+      se.plannedLoadLb = Number.isFinite(se.plannedLoadLb) ? se.plannedLoadLb : null;
       se.sets = Array.isArray(se.sets) ? se.sets : [];
       se.sets.forEach(set => {
         set.type ||= "normal";
+        if (trackingType !== "duration") {
+          set.weightLb = Number.isFinite(set.weightLb) ? set.weightLb : 0;
+          set.reps = Number.isFinite(set.reps) ? set.reps : 0;
+        }
+        set.rir = Number.isFinite(set.rir) ? set.rir : null;
+        set.rpe = Number.isFinite(set.rpe) ? set.rpe : null;
         set.done = set.done !== false;
       });
     });
@@ -341,7 +485,11 @@ function normalizeState(s){
 function saveState(){ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
 function uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); }
 function unitLabel(){ return state.settings.isKg ? "kg" : "lb"; }
-function toDisplayWeight(lb){ return state.settings.isKg ? lb / 2.2046226218 : lb; }
+function toDisplayWeight(lb){
+  const weight = Number(lb);
+  if (!Number.isFinite(weight)) return 0;
+  return state.settings.isKg ? weight / 2.2046226218 : weight;
+}
 function toPounds(display){
   const v = Number(display);
   if (!Number.isFinite(v)) return 0;
@@ -353,6 +501,7 @@ function fmtWeight(lb){
 }
 function fmtDateTime(ts){ return new Date(ts).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" }); }
 function fmtDate(ts){ return new Date(ts).toLocaleDateString([], { month:"short", day:"numeric", year:"numeric" }); }
+function fmtPlanWeek(dateString){ return new Date(`${dateString}T12:00:00`).toLocaleDateString([], { month:"short", day:"numeric", year:"numeric" }); }
 function fmtDuration(ms){
   const total = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(total / 3600);
@@ -406,6 +555,17 @@ function toast(msg){
 function exerciseById(id){ return state.exercises.find(e => e.id === id) || null; }
 function exerciseName(id){ return exerciseById(id)?.name || "Exercise"; }
 function workoutById(id){ return state.workouts.find(w => w.id === id) || null; }
+function trackingTypeForExercise(exerciseId){ return exerciseById(exerciseId)?.trackingType || "weight_reps"; }
+function isDurationExercise(exerciseId){ return trackingTypeForExercise(exerciseId) === "duration"; }
+function targetLabel(item){
+  const range = item.targetRepRange || String(item.targetReps || "");
+  if (isDurationExercise(item.exerciseId)) {
+    return [range, item.targetEffort].filter(Boolean).join(" - ");
+  }
+  const load = Number.isFinite(item.plannedLoadLb) ? ` at ${fmtWeight(item.plannedLoadLb)}` : "";
+  const effort = item.targetEffort ? ` - ${item.targetEffort}` : "";
+  return `${item.targetSets} x ${range}${load}${effort}`;
+}
 function getActiveSession(){
   if (!state.activeSessionId) return null;
   return state.sessions.find(s => s.id === state.activeSessionId) || null;
@@ -435,6 +595,154 @@ function appStats(){
   });
   const last = sessions[0];
   return { sessions, sets, volume, prs: prs.size, last };
+}
+
+function exportTemplateExercise(item){
+  const exercise = exerciseById(item.exerciseId);
+  return {
+    exerciseName:exercise?.name || "Exercise",
+    muscleGroup:exercise?.muscleGroup || "Other",
+    equipment:exercise?.equipment || "Other",
+    trackingType:exercise?.trackingType || "weight_reps",
+    targetSets:item.targetSets,
+    targetRepRange:item.targetRepRange || String(item.targetReps || ""),
+    plannedLoadLb:Number.isFinite(item.plannedLoadLb) ? item.plannedLoadLb : null,
+    targetEffort:item.targetEffort || "",
+    restSeconds:item.restSeconds || 0,
+    notes:item.notes || ""
+  };
+}
+
+function exportSession(session){
+  const endedAt = Number.isFinite(session.endedAt) ? session.endedAt : null;
+  return {
+    workoutName:session.workoutName || "Workout",
+    planWeek:session.planWeek || null,
+    status:endedAt ? "completed" : "active",
+    startedAt:Number.isFinite(session.startedAt) ? new Date(session.startedAt).toISOString() : null,
+    endedAt:endedAt ? new Date(endedAt).toISOString() : null,
+    durationMinutes:Number.isFinite(session.startedAt)
+      ? Number((((endedAt || Date.now()) - session.startedAt) / 60000).toFixed(1))
+      : null,
+    sessionRpe:Number.isFinite(session.sessionRpe) ? session.sessionRpe : null,
+    notes:session.notes || "",
+    exercises:(session.exercises || [])
+      .slice()
+      .sort((a,b)=>(a.orderIndex || 0) - (b.orderIndex || 0))
+      .map(item => {
+        const trackingType = trackingTypeForExercise(item.exerciseId);
+        return {
+          exerciseName:exerciseName(item.exerciseId),
+          trackingType,
+          targetSets:item.targetSets,
+          targetRepRange:item.targetRepRange || String(item.targetReps || ""),
+          plannedLoadLb:Number.isFinite(item.plannedLoadLb) ? item.plannedLoadLb : null,
+          targetEffort:item.targetEffort || "",
+          restSeconds:item.restSeconds || 0,
+          notes:item.notes || "",
+          sets:(item.sets || [])
+            .filter(set => set.done !== false)
+            .slice()
+            .sort((a,b)=>(a.setNumber || 0) - (b.setNumber || 0))
+            .map(set => trackingType === "duration"
+              ? {
+                  setNumber:set.setNumber,
+                  durationMinutes:Number.isFinite(set.durationMinutes) ? set.durationMinutes : null,
+                  rpe:Number.isFinite(set.rpe) ? set.rpe : null,
+                  loggedAt:Number.isFinite(set.createdAt) ? new Date(set.createdAt).toISOString() : null
+                }
+              : {
+                  setNumber:set.setNumber,
+                  type:set.type || "normal",
+                  weightLb:Number.isFinite(set.weightLb) ? Number(set.weightLb.toFixed(2)) : null,
+                  reps:Number.isFinite(set.reps) ? set.reps : null,
+                  rir:Number.isFinite(set.rir) ? set.rir : null,
+                  loggedAt:Number.isFinite(set.createdAt) ? new Date(set.createdAt).toISOString() : null
+                })
+        };
+      })
+  };
+}
+
+function buildExportPayload(){
+  const sessions = completedSessions().slice().sort((a,b)=>a.startedAt-b.startedAt);
+  const totalLoggedSets = sessions.reduce((total, session) =>
+    total + session.exercises.reduce((exerciseTotal, item) =>
+      exerciseTotal + (item.sets || []).filter(set => set.done !== false).length, 0), 0);
+
+  return {
+    exportFormat:"lift-log-review-v1",
+    app:{ name:"Lift Log", version:APP_VERSION },
+    exportedAt:new Date().toISOString(),
+    displayUnits:unitLabel(),
+    reviewInstructions:"Upload this JSON file to ChatGPT and ask it to review your completed workouts and adjust next week's four-day strength plan.",
+    summary:{
+      workoutTemplates:state.workouts.length,
+      completedSessions:sessions.length,
+      totalLoggedSets,
+      firstCompletedWorkout:sessions.length ? new Date(sessions[0].startedAt).toISOString() : null,
+      mostRecentCompletedWorkout:sessions.length ? new Date(sessions[sessions.length - 1].startedAt).toISOString() : null
+    },
+    progressionRule:"Keep the load until every work set reaches the top of the rep range at the target RIR; then add about 5 lb to upper-body lifts or 5-10 lb to lower-body lifts.",
+    workoutTemplates:state.workouts
+      .slice()
+      .sort((a,b)=>(a.scheduleOrder ?? 999) - (b.scheduleOrder ?? 999) || a.name.localeCompare(b.name))
+      .map(workout => ({
+        name:workout.name,
+        planWeek:workout.planWeek || null,
+        notes:workout.notes || "",
+        exercises:(workout.exercises || []).map(exportTemplateExercise)
+      })),
+    completedSessions:sessions.map(exportSession),
+    activeSession:getActiveSession() ? exportSession(getActiveSession()) : null,
+    backup:{ storageKey:LS_KEY, state }
+  };
+}
+
+function downloadExport(blob, filename){
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.rel = "noopener";
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+async function exportWorkoutData(){
+  const originalText = els.exportDataBtn.textContent;
+  els.exportDataBtn.disabled = true;
+  els.exportDataBtn.textContent = "Preparing...";
+
+  try {
+    const json = JSON.stringify(buildExportPayload(), null, 2);
+    const filename = `lift-log-export-${new Date().toISOString().slice(0,10)}.json`;
+    const blob = new Blob([json], { type:"application/json" });
+    const file = typeof File === "function" ? new File([blob], filename, { type:"application/json" }) : null;
+
+    if (file && navigator.share && navigator.canShare?.({ files:[file] })) {
+      await navigator.share({
+        title:"Lift Log workout export",
+        text:"Workout history and current strength plan",
+        files:[file]
+      });
+      toast("Export shared");
+      return;
+    }
+
+    downloadExport(blob, filename);
+    toast("Export downloaded");
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      console.error(error);
+      toast("Export failed. Please try again.");
+    }
+  } finally {
+    els.exportDataBtn.disabled = false;
+    els.exportDataBtn.textContent = originalText;
+  }
 }
 
 function openDrawer(){
@@ -758,7 +1066,9 @@ function startWorkout(workoutId){
     id: uid(),
     workoutId: workout.id,
     workoutName: workout.name,
+    planWeek: workout.planWeek || null,
     notes: workout.notes || "",
+    sessionRpe: null,
     startedAt: Date.now(),
     endedAt: null,
     exercises: workout.exercises.map((te, index) => ({
@@ -767,7 +1077,10 @@ function startWorkout(workoutId){
       exerciseId: te.exerciseId,
       targetSets: Number(te.targetSets) || 3,
       targetReps: Number(te.targetReps) || 10,
-      restSeconds: Number(te.restSeconds) || 90,
+      targetRepRange: te.targetRepRange || String(te.targetReps || ""),
+      targetEffort: te.targetEffort || "",
+      plannedLoadLb: Number.isFinite(te.plannedLoadLb) ? te.plannedLoadLb : null,
+      restSeconds: Number.isFinite(Number(te.restSeconds)) ? Number(te.restSeconds) : 90,
       notes: te.notes || "",
       sets: buildPlannedSets(te)
     }))
@@ -779,17 +1092,28 @@ function startWorkout(workoutId){
   toast("Workout started");
 }
 function buildPlannedSets(te){
+  const isDuration = isDurationExercise(te.exerciseId);
   const last = lastSetForExercise(te.exerciseId);
   const count = Math.max(1, Number(te.targetSets) || 3);
-  return Array.from({ length: count }, (_, i) => ({
-    id: uid(),
-    setNumber: i + 1,
-    type: "normal",
-    reps: Number(te.targetReps) || 10,
-    weightLb: last ? last.weightLb : 0,
-    done: false,
-    createdAt: Date.now()
-  }));
+  return Array.from({ length: count }, (_, i) => isDuration
+    ? {
+        id:uid(),
+        setNumber:i + 1,
+        durationMinutes:Number(te.targetReps) || 10,
+        rpe:null,
+        done:false,
+        createdAt:Date.now()
+      }
+    : {
+        id:uid(),
+        setNumber:i + 1,
+        type:"normal",
+        reps:Number(te.targetReps) || 10,
+        weightLb:Number.isFinite(te.plannedLoadLb) ? te.plannedLoadLb : (last?.weightLb || 0),
+        rir:null,
+        done:false,
+        createdAt:Date.now()
+      });
 }
 function finishWorkout(){
   const sess = getActiveSession();
@@ -818,15 +1142,25 @@ function addSet(sessionExerciseId){
   const se = sess?.exercises.find(x => x.id === sessionExerciseId);
   if (!se) return;
   const previous = se.sets[se.sets.length - 1] || lastSetForExercise(se.exerciseId);
-  se.sets.push({
-    id: uid(),
-    setNumber: se.sets.length + 1,
-    type: "normal",
-    reps: previous?.reps || se.targetReps || 10,
-    weightLb: previous?.weightLb || 0,
-    done: false,
-    createdAt: Date.now()
-  });
+  se.sets.push(isDurationExercise(se.exerciseId)
+    ? {
+        id:uid(),
+        setNumber:se.sets.length + 1,
+        durationMinutes:previous?.durationMinutes || se.targetReps || 10,
+        rpe:Number.isFinite(previous?.rpe) ? previous.rpe : null,
+        done:false,
+        createdAt:Date.now()
+      }
+    : {
+        id:uid(),
+        setNumber:se.sets.length + 1,
+        type:"normal",
+        reps:previous?.reps || se.targetReps || 10,
+        weightLb:previous?.weightLb || se.plannedLoadLb || 0,
+        rir:Number.isFinite(previous?.rir) ? previous.rir : null,
+        done:false,
+        createdAt:Date.now()
+      });
   saveState();
   renderActiveWorkout();
 }
@@ -845,6 +1179,9 @@ function updateSet(sessionExerciseId, setId, field, value){
   if (!set || !se) return;
   if (field === "weightDisplay") set.weightLb = toPounds(value);
   if (field === "reps") set.reps = Math.max(0, Math.floor(Number(value) || 0));
+  if (field === "rir") set.rir = value === "" ? null : Math.max(0, Math.min(10, Number(value)));
+  if (field === "durationMinutes") set.durationMinutes = Math.max(0, Number(value) || 0);
+  if (field === "rpe") set.rpe = value === "" ? null : Math.max(1, Math.min(10, Number(value)));
   if (field === "type") set.type = value || "normal";
   saveState();
 }
@@ -853,7 +1190,7 @@ function toggleSet(sessionExerciseId, setId, checked){
   const se = sess?.exercises.find(x => x.id === sessionExerciseId);
   const set = se?.sets.find(s => s.id === setId);
   if (!set || !se) return;
-  if (checked && !set.weightLb && state.settings.blankWeightUsesBaseline) {
+  if (checked && !isDurationExercise(se.exerciseId) && !set.weightLb && state.settings.blankWeightUsesBaseline) {
     const last = lastSetForExercise(se.exerciseId);
     if (last) set.weightLb = last.weightLb;
   }
@@ -861,14 +1198,21 @@ function toggleSet(sessionExerciseId, setId, checked){
   set.createdAt = Date.now();
   saveState();
   renderActiveWorkout();
-  if (checked && state.settings.autoRest) {
-    startTimer(se.restSeconds || 90, `${exerciseName(se.exerciseId)} rest`);
+  if (checked && state.settings.autoRest && se.restSeconds > 0) {
+    startTimer(se.restSeconds, `${exerciseName(se.exerciseId)} rest`);
   }
 }
 function updateSessionNotes(value){
   const sess = getActiveSession();
   if (!sess) return;
   sess.notes = value;
+  saveState();
+}
+function updateSessionRpe(value){
+  const sess = getActiveSession();
+  if (!sess) return;
+  const rpe = Number(value);
+  sess.sessionRpe = Number.isFinite(rpe) && rpe >= 1 && rpe <= 10 ? rpe : null;
   saveState();
 }
 function updateSessionExerciseNotes(sessionExerciseId, value){
@@ -1180,67 +1524,100 @@ function renderActiveWorkout(){
   meta.appendChild(elapsedBadge);
   head.appendChild(meta);
   const notes = el("textarea","textarea workout-notes");
-  notes.placeholder = "Workout notes";
+  notes.placeholder = "Workout notes: soreness, pain, fatigue, substitutions, or anything unusual";
   notes.value = sess.notes || "";
   notes.addEventListener("change", e => updateSessionNotes(e.target.value));
   head.appendChild(notes);
+  const rpeField = el("label","field session-rpe");
+  rpeField.appendChild(el("span","", "Overall session RPE (optional)"));
+  const rpeInput = el("input","input");
+  rpeInput.type = "number";
+  rpeInput.inputMode = "decimal";
+  rpeInput.min = "1";
+  rpeInput.max = "10";
+  rpeInput.step = "0.5";
+  rpeInput.placeholder = "1-10";
+  rpeInput.value = Number.isFinite(sess.sessionRpe) ? sess.sessionRpe : "";
+  rpeInput.addEventListener("change", e => updateSessionRpe(e.target.value));
+  rpeField.appendChild(rpeInput);
+  head.appendChild(rpeField);
   els.activeWorkout.appendChild(head);
 
   sess.exercises.slice().sort((a,b)=>a.orderIndex-b.orderIndex).forEach(se => {
     const card = el("div","exercise-card");
+    const isDuration = isDurationExercise(se.exerciseId);
     const isExerciseComplete = se.sets.length > 0 && se.sets.every(set => set.done);
     card.classList.toggle("is-complete", isExerciseComplete);
     const topRow = el("div","exercise-head");
-    const best = bestSetForExercise(se.exerciseId);
+    const best = isDuration ? null : bestSetForExercise(se.exerciseId);
     const last = lastSetForExercise(se.exerciseId);
     const title = exerciseTitleBlock(se.exerciseId, [
-      `Target ${se.targetSets} x ${se.targetReps}`,
-      `Rest ${se.restSeconds}s`,
+      `Target ${targetLabel(se)}`,
+      se.restSeconds > 0 ? `Rest ${se.restSeconds}s` : null,
       best ? `Best est. 1RM ${fmtWeight(e1rm(best))}` : null,
-      last ? `Last ${last.reps} x ${fmtWeight(last.weightLb)}` : null
+      isDuration && last?.durationMinutes ? `Last ${last.durationMinutes} min${Number.isFinite(last.rpe) ? ` at RPE ${last.rpe}` : ""}` : null,
+      !isDuration && last ? `Last ${last.reps} x ${fmtWeight(last.weightLb)}` : null
     ].filter(Boolean).join(" - "));
-    title.copy.appendChild(el("div","previous-weight", last ? `Previous weight: ${fmtWeight(last.weightLb)}` : "Previous weight: none yet"));
+    if (isDuration) {
+      title.copy.appendChild(el("div","previous-weight", last?.durationMinutes ? `Previous cardio: ${last.durationMinutes} minutes` : "Previous cardio: none yet"));
+    } else {
+      title.copy.appendChild(el("div","previous-weight", last ? `Previous weight: ${fmtWeight(last.weightLb)}` : "Previous weight: none yet"));
+    }
     topRow.appendChild(title.wrap);
     const activeControls = el("div","active-exercise-controls");
-    const restField = el("label","field compact");
-    restField.innerHTML = `<span>Rest timer</span>`;
-    const restInput = el("input","input");
-    restInput.type = "number";
-    restInput.inputMode = "numeric";
-    restInput.pattern = "[0-9]*";
-    restInput.min = "10";
-    restInput.step = "5";
-    restInput.value = se.restSeconds || 90;
-    restInput.addEventListener("change", e => updateSessionExerciseRest(se.id, e.target.value));
-    restField.appendChild(restInput);
-    restField.appendChild(el("small","field-help", "seconds"));
-    activeControls.appendChild(restField);
+    if (se.restSeconds > 0) {
+      const restField = el("label","field compact");
+      restField.innerHTML = `<span>Rest timer</span>`;
+      const restInput = el("input","input");
+      restInput.type = "number";
+      restInput.inputMode = "numeric";
+      restInput.pattern = "[0-9]*";
+      restInput.min = "10";
+      restInput.step = "5";
+      restInput.value = se.restSeconds;
+      restInput.addEventListener("change", e => updateSessionExerciseRest(se.id, e.target.value));
+      restField.appendChild(restInput);
+      restField.appendChild(el("small","field-help", "seconds"));
+      activeControls.appendChild(restField);
+    }
     activeControls.appendChild(button("Add Set", "btn secondary", () => addSet(se.id)));
     topRow.appendChild(activeControls);
     card.appendChild(topRow);
 
     const table = el("table","set-table");
-    table.innerHTML = `<thead><tr><th>Set</th><th>Type</th><th>Weight</th><th>Reps</th><th>Done</th><th></th></tr></thead>`;
+    table.classList.toggle("duration-table", isDuration);
+    table.innerHTML = isDuration
+      ? `<thead><tr><th>Set</th><th>Minutes</th><th>RPE</th><th>Done</th><th></th></tr></thead>`
+      : `<thead><tr><th>Set</th><th>Type</th><th>Weight</th><th>Reps</th><th>RIR</th><th>Done</th><th></th></tr></thead>`;
     const tbody = el("tbody");
     se.sets.forEach(set => {
       const row = el("tr");
       row.classList.toggle("is-complete", !!set.done);
-      row.innerHTML = `
-        <td>${set.setNumber}</td>
-        <td>
-          <select data-field="type">
-            <option value="normal">Normal</option>
-            <option value="warmup">Warmup</option>
-            <option value="drop">Drop</option>
-            <option value="failure">Failure</option>
-          </select>
-        </td>
-        <td><input data-field="weightDisplay" type="number" inputmode="decimal" step="0.5" value="${set.weightLb ? toDisplayWeight(set.weightLb).toFixed(1) : ""}" placeholder="${last ? fmtWeight(last.weightLb) : unitLabel()}" aria-label="Weight, previous ${last ? fmtWeight(last.weightLb) : unitLabel()}" /></td>
-        <td><input data-field="reps" type="number" inputmode="numeric" min="0" value="${set.reps || ""}" /></td>
-        <td class="set-done"><input data-field="done" type="checkbox" ${set.done ? "checked" : ""} /></td>
-        <td><button class="mini-btn" data-action="remove">Del</button></td>
-      `;
-      row.querySelector("select").value = set.type || "normal";
+      row.innerHTML = isDuration
+        ? `
+          <td>${set.setNumber}</td>
+          <td><input data-field="durationMinutes" type="number" inputmode="decimal" min="0" step="1" value="${set.durationMinutes || ""}" aria-label="Cardio minutes" /></td>
+          <td><input data-field="rpe" type="number" inputmode="decimal" min="1" max="10" step="0.5" value="${Number.isFinite(set.rpe) ? set.rpe : ""}" placeholder="1-10" aria-label="Cardio RPE" /></td>
+          <td class="set-done"><input data-field="done" type="checkbox" ${set.done ? "checked" : ""} /></td>
+          <td><button class="mini-btn" data-action="remove">Del</button></td>
+        `
+        : `
+          <td>${set.setNumber}</td>
+          <td>
+            <select data-field="type">
+              <option value="normal">Normal</option>
+              <option value="warmup">Warmup</option>
+              <option value="drop">Drop</option>
+              <option value="failure">Failure</option>
+            </select>
+          </td>
+          <td><input data-field="weightDisplay" type="number" inputmode="decimal" step="0.5" value="${set.weightLb ? toDisplayWeight(set.weightLb).toFixed(1) : ""}" placeholder="${last ? fmtWeight(last.weightLb) : unitLabel()}" aria-label="Weight, previous ${last ? fmtWeight(last.weightLb) : unitLabel()}" /></td>
+          <td><input data-field="reps" type="number" inputmode="numeric" min="0" value="${set.reps || ""}" /></td>
+          <td><input data-field="rir" type="number" inputmode="numeric" min="0" max="10" step="1" value="${Number.isFinite(set.rir) ? set.rir : ""}" placeholder="RIR" aria-label="Reps in reserve" /></td>
+          <td class="set-done"><input data-field="done" type="checkbox" ${set.done ? "checked" : ""} /></td>
+          <td><button class="mini-btn" data-action="remove">Del</button></td>
+        `;
+      if (!isDuration) row.querySelector("select").value = set.type || "normal";
       row.querySelectorAll("[data-field]").forEach(input => {
         if (input.dataset.field === "done") {
           input.addEventListener("change", e => toggleSet(se.id, set.id, e.target.checked));
@@ -1252,7 +1629,9 @@ function renderActiveWorkout(){
       tbody.appendChild(row);
     });
     table.appendChild(tbody);
-    card.appendChild(table);
+    const tableScroll = el("div","table-scroll");
+    tableScroll.appendChild(table);
+    card.appendChild(tableScroll);
     const notes = el("textarea","textarea");
     notes.placeholder = "Exercise notes";
     notes.value = se.notes || "";
@@ -1282,12 +1661,12 @@ function renderWorkoutsHome(){
   block.appendChild(head);
   const list = el("div","routine-list");
   if (!state.workouts.length) list.appendChild(el("div","empty", "No routines yet. Create one to get started."));
-  state.workouts.slice().sort((a,b)=>a.name.localeCompare(b.name)).forEach(workout => {
+  state.workouts.slice().sort((a,b)=>(a.scheduleOrder ?? 999) - (b.scheduleOrder ?? 999) || a.name.localeCompare(b.name)).forEach(workout => {
     const card = el("div","routine-card");
     const top = el("div","routine-top");
     const leftSide = el("div");
     leftSide.appendChild(el("h3","", workout.name));
-    leftSide.appendChild(el("p","muted", `${workout.exercises.length} exercises${workout.notes ? " - has notes" : ""}`));
+    leftSide.appendChild(el("p","muted", `${workout.planWeek ? `Week of ${fmtPlanWeek(workout.planWeek)} - ` : ""}${workout.exercises.length} exercises${workout.notes ? " - has notes" : ""}`));
     const chips = el("div","chips");
     workout.exercises.slice(0,4).forEach(te => chips.appendChild(el("span","badge", exerciseName(te.exerciseId))));
     if (workout.exercises.length > 4) chips.appendChild(el("span","badge", `+${workout.exercises.length - 4}`));
@@ -1340,7 +1719,11 @@ function renderWorkoutDetail(){
     const card = el("div","exercise-card");
     const header = el("div","exercise-head");
     const best = bestSetForExercise(te.exerciseId);
-    header.appendChild(exerciseTitleBlock(te.exerciseId, best ? `Best est. 1RM ${fmtWeight(e1rm(best))}` : "No completed history yet").wrap);
+    header.appendChild(exerciseTitleBlock(te.exerciseId, [
+      `Target ${targetLabel(te)}`,
+      te.restSeconds > 0 ? `Rest ${te.restSeconds}s` : null,
+      best ? `Best est. 1RM ${fmtWeight(e1rm(best))}` : null
+    ].filter(Boolean).join(" - ")).wrap);
     header.appendChild(button("Remove", "btn secondary", () => removeTemplateExercise(workout.id, te.id)));
     card.appendChild(header);
     const grid = el("div","grid2");
@@ -1420,6 +1803,7 @@ function renderHistoryRoute(){
     const chips = el("div","chips");
     chips.appendChild(el("span","badge blue", `${doneSets.length} sets`));
     chips.appendChild(el("span","badge", `${fmtWeight(volume)} volume`));
+    if (Number.isFinite(sess.sessionRpe)) chips.appendChild(el("span","badge", `Session RPE ${sess.sessionRpe}`));
     left.appendChild(chips);
     top.appendChild(left);
     top.appendChild(button("Open", "btn secondary", () => { ui.history = { screen:"detail", sessionId:sess.id }; renderHistoryRoute(); }));
@@ -1443,6 +1827,7 @@ function renderHistoryDetail(){
   head.appendChild(left);
   head.appendChild(button("Back", "btn secondary", () => { ui.history = { screen:"list", sessionId:null }; renderHistoryRoute(); }));
   block.appendChild(head);
+  if (Number.isFinite(sess.sessionRpe)) block.appendChild(el("span","badge", `Session RPE ${sess.sessionRpe}`));
   if (sess.notes) block.appendChild(el("p","muted", sess.notes));
   els.historyRoot.appendChild(block);
   sess.exercises.slice().sort((a,b)=>a.orderIndex-b.orderIndex).forEach(se => {
@@ -1453,24 +1838,37 @@ function renderHistoryDetail(){
     if (!sets.length) {
       card.appendChild(el("p","muted", "No completed sets."));
     } else {
+      const isDuration = isDurationExercise(se.exerciseId);
       const table = el("table","set-table");
-      table.innerHTML = "<thead><tr><th>Set</th><th>Type</th><th>Weight</th><th>Reps</th><th>Est. 1RM</th></tr></thead>";
+      table.classList.toggle("duration-table", isDuration);
+      table.innerHTML = isDuration
+        ? "<thead><tr><th>Set</th><th>Minutes</th><th>RPE</th></tr></thead>"
+        : "<thead><tr><th>Set</th><th>Type</th><th>Weight</th><th>Reps</th><th>RIR</th><th>Est. 1RM</th></tr></thead>";
       const tbody = el("tbody");
-      const best = bestSetForExercise(se.exerciseId);
+      const best = isDuration ? null : bestSetForExercise(se.exerciseId);
       sets.forEach(set => {
         const row = el("tr");
         const isBest = best && set.id === best.id;
-        row.innerHTML = `
-          <td>${set.setNumber}</td>
-          <td><span class="set-type ${escapeHtml(set.type || "normal")}">${escapeHtml(set.type || "normal")}</span></td>
-          <td>${fmtWeight(set.weightLb)}</td>
-          <td>${set.reps}</td>
-          <td>${fmtWeight(e1rm(set))} ${isBest ? '<span class="badge pr">PR</span>' : ""}</td>
-        `;
+        row.innerHTML = isDuration
+          ? `
+            <td>${set.setNumber}</td>
+            <td>${Number.isFinite(set.durationMinutes) ? set.durationMinutes : "-"}</td>
+            <td>${Number.isFinite(set.rpe) ? set.rpe : "-"}</td>
+          `
+          : `
+            <td>${set.setNumber}</td>
+            <td><span class="set-type ${escapeHtml(set.type || "normal")}">${escapeHtml(set.type || "normal")}</span></td>
+            <td>${fmtWeight(set.weightLb)}</td>
+            <td>${set.reps}</td>
+            <td>${Number.isFinite(set.rir) ? set.rir : "-"}</td>
+            <td>${fmtWeight(e1rm(set))} ${isBest ? '<span class="badge pr">PR</span>' : ""}</td>
+          `;
         tbody.appendChild(row);
       });
       table.appendChild(tbody);
-      card.appendChild(table);
+      const tableScroll = el("div","table-scroll");
+      tableScroll.appendChild(table);
+      card.appendChild(tableScroll);
     }
     els.historyRoot.appendChild(card);
   });
@@ -1515,6 +1913,7 @@ function renderSettingsRoute(){
 function resetAllData(){
   if (!confirm("Reset all data? This cannot be undone.")) return;
   state = DEFAULT_STATE();
+  state.appMigrations.push(WEEKLY_PLAN_MIGRATION);
   saveState();
   stopTimer(true);
   ui = { workouts:{ screen:"list", workoutId:null }, history:{ screen:"list", sessionId:null } };
