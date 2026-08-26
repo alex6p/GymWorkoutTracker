@@ -85,6 +85,16 @@
           </label>
           <label class="setting-row">
             <span>
+              <strong>Cardio distance units</strong>
+              <small>Used for treadmill, bike, rower, elliptical, and other cardio logs.</small>
+            </span>
+            <select id="distanceUnitSelect" class="setting-select" aria-label="Cardio distance units">
+              <option value="mi">Miles</option>
+              <option value="km">Kilometers</option>
+            </select>
+          </label>
+          <label class="setting-row">
+            <span>
               <strong>Auto-start rest timer</strong>
               <small>Start the timer after a set is completed.</small>
             </span>
@@ -106,6 +116,20 @@
               <small>Fast logging when your working weight stays the same.</small>
             </span>
             <input id="blankWeightUsesBaselineToggle" type="checkbox" />
+          </label>
+          <label class="setting-row">
+            <span>
+              <strong>Keep screen awake</strong>
+              <small id="wakeLockStatus">Active while Lift Log is visible. This uses a little extra battery.</small>
+            </span>
+            <input id="keepScreenAwakeToggle" type="checkbox" />
+          </label>
+          <label class="setting-row">
+            <span>
+              <strong>Block accidental text undo</strong>
+              <small>Protects fields when the browser exposes an undo event. To remove the iPhone shake prompt too: Settings &gt; Accessibility &gt; Touch &gt; Shake to Undo.</small>
+            </span>
+            <input id="blockTextUndoToggle" type="checkbox" />
           </label>
           <div class="setting-row">
             <span>
@@ -157,7 +181,7 @@
         <div class="section-head">
           <div>
             <h2>Export for Review</h2>
-            <p>Creates a JSON file containing your routines, completed sets, weights, reps, RIR, cardio, session length, and notes.</p>
+            <p>Creates a JSON file containing your routines, completed sets, weights, reps, RIR, cardio time and distance, session length, and notes.</p>
           </div>
           <button id="exportDataBtn" class="btn" type="button">Export Workout Data</button>
         </div>

@@ -5,7 +5,7 @@
 
 const LS_KEY = "gym_tracker_v6";
 const LEGACY_KEYS = ["gym_tracker_v5","gym_tracker_v4","gym_tracker_v3","gym_tracker_v2","gym_tracker_v1"];
-const APP_VERSION = "7.1.0";
+const APP_VERSION = "7.2.0";
 const WEEKLY_PLAN_MIGRATION = "strength_rebuild_2026_08_24_v1";
 const BASELINE_SESSION_KEY = "upper_a_2026_08_17";
 const PUBLISHED_PLAN_PATH = "./data/current-plan.json";
@@ -16,6 +16,9 @@ let state = loadState();
 let syncState = loadSyncState();
 let syncBusy = false;
 let syncRefreshPromise = null;
+let screenWakeLock = null;
+let wakeLockRequestPromise = null;
+let wakeLockError = "";
 saveState();
 let route = "workouts";
 let ui = {
@@ -42,10 +45,14 @@ const els = {
   historyRoot: $("historyRoot"),
   settingsRoute: $("route-settings"),
   unitsToggle: $("unitsToggle"),
+  distanceUnitSelect: $("distanceUnitSelect"),
   autoRestToggle: $("autoRestToggle"),
   timerSoundToggle: $("timerSoundToggle"),
   testTimerSoundBtn: $("testTimerSoundBtn"),
   blankWeightUsesBaselineToggle: $("blankWeightUsesBaselineToggle"),
+  keepScreenAwakeToggle: $("keepScreenAwakeToggle"),
+  wakeLockStatus: $("wakeLockStatus"),
+  blockTextUndoToggle: $("blockTextUndoToggle"),
   enableNotificationsBtn: $("enableNotificationsBtn"),
   notificationStatus: $("notificationStatus"),
   syncStatus: $("syncStatus"),
@@ -90,6 +97,13 @@ els.modalBackdrop.addEventListener("touchmove", (e) => e.preventDefault(), { pas
 document.addEventListener("pointerdown", unlockTimerAudio, { once:true, passive:true });
 document.addEventListener("touchend", unlockTimerAudio, { once:true, passive:true });
 document.addEventListener("keydown", unlockTimerAudio, { once:true });
+document.addEventListener("pointerdown", () => void ensureScreenAwake(), { once:true, passive:true });
+document.addEventListener("touchend", () => void ensureScreenAwake(), { once:true, passive:true });
+document.addEventListener("beforeinput", blockAccidentalTextUndo, true);
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") void ensureScreenAwake();
+  else updateWakeLockStatus();
+});
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
   if (!els.modal.classList.contains("hidden")) closeModal();
@@ -103,7 +117,15 @@ window.addEventListener("online", () => {
 function DEFAULT_STATE(){
   const exercises = seedExercises();
   return {
-    settings: { isKg:false, autoRest:true, timerSound:true, blankWeightUsesBaseline:true },
+    settings: {
+      isKg:false,
+      distanceUnit:"mi",
+      autoRest:true,
+      timerSound:true,
+      blankWeightUsesBaseline:true,
+      keepScreenAwake:true,
+      blockTextUndo:true
+    },
     exercises,
     workouts: seedWorkouts(exercises),
     sessions: [],
@@ -210,7 +232,10 @@ function trainingPlanExerciseDefs(){
     ["Hip Thrust","Legs","Barbell or Machine"],
     ["Leg Extension","Legs","Machine"],
     ["Seated Calf Raise","Legs","Machine"],
-    ["StairMaster (Optional)","Cardio","StairMaster","duration"]
+    ["StairMaster (Optional)","Cardio","StairMaster","duration"],
+    ["Treadmill Run","Cardio","Treadmill","duration"],
+    ["Stationary Bike","Cardio","Bike","duration"],
+    ["Rowing Machine","Cardio","Rower","duration"]
   ];
 }
 
@@ -616,7 +641,17 @@ function migrateLegacy(old, defaults){
 }
 
 function normalizeState(s){
-  s.settings = { isKg:false, autoRest:true, timerSound:true, blankWeightUsesBaseline:true, ...(s.settings || {}) };
+  s.settings = {
+    isKg:false,
+    distanceUnit:"mi",
+    autoRest:true,
+    timerSound:true,
+    blankWeightUsesBaseline:true,
+    keepScreenAwake:true,
+    blockTextUndo:true,
+    ...(s.settings || {})
+  };
+  s.settings.distanceUnit = s.settings.distanceUnit === "km" ? "km" : "mi";
   s.exercises = Array.isArray(s.exercises) ? s.exercises : [];
   s.workouts = Array.isArray(s.workouts) ? s.workouts : [];
   s.sessions = Array.isArray(s.sessions) ? s.sessions : [];
@@ -652,6 +687,17 @@ function normalizeState(s){
         if (trackingType !== "duration") {
           set.weightLb = Number.isFinite(set.weightLb) ? set.weightLb : 0;
           set.reps = Number.isFinite(set.reps) ? set.reps : 0;
+        } else {
+          const savedKm = set.distanceKm;
+          const legacyDistance = set.distance;
+          if (savedKm !== null && savedKm !== "" && Number.isFinite(Number(savedKm))) {
+            set.distanceKm = Math.max(0, Number(savedKm));
+          } else if (legacyDistance !== null && legacyDistance !== "" && Number.isFinite(Number(legacyDistance))) {
+            const legacyUnit = set.distanceUnit === "mi" ? "mi" : "km";
+            set.distanceKm = legacyUnit === "mi" ? Math.max(0, Number(legacyDistance)) * 1.609344 : Math.max(0, Number(legacyDistance));
+          } else {
+            set.distanceKm = null;
+          }
         }
         set.rir = Number.isFinite(set.rir) ? set.rir : null;
         set.rpe = Number.isFinite(set.rpe) ? set.rpe : null;
@@ -680,6 +726,35 @@ function toPounds(display){
 function fmtWeight(lb){
   const v = toDisplayWeight(lb);
   return `${Number.isInteger(v) ? v.toFixed(0) : v.toFixed(1)} ${unitLabel()}`;
+}
+function distanceUnitLabel(){ return state.settings.distanceUnit === "km" ? "km" : "mi"; }
+function toDisplayDistance(km){
+  const distance = Number(km);
+  if (!Number.isFinite(distance)) return null;
+  return distanceUnitLabel() === "mi" ? distance / 1.609344 : distance;
+}
+function toKilometers(display){
+  if (display === "" || display === null || display === undefined) return null;
+  const distance = Number(display);
+  if (!Number.isFinite(distance)) return null;
+  return Math.max(0, distanceUnitLabel() === "mi" ? distance * 1.609344 : distance);
+}
+function displayDistanceValue(km){
+  const distance = toDisplayDistance(km);
+  if (!Number.isFinite(distance)) return "";
+  return Number(distance.toFixed(2)).toString();
+}
+function fmtDistance(km){
+  const distance = toDisplayDistance(km);
+  return Number.isFinite(distance) ? `${Number(distance.toFixed(2))} ${distanceUnitLabel()}` : "";
+}
+function cardioSetSummary(set){
+  if (!set) return "";
+  return [
+    Number.isFinite(set.durationMinutes) ? `${set.durationMinutes} min` : null,
+    Number.isFinite(set.distanceKm) ? fmtDistance(set.distanceKm) : null,
+    Number.isFinite(set.rpe) ? `RPE ${set.rpe}` : null
+  ].filter(Boolean).join(" - ");
 }
 function fmtDateTime(ts){ return new Date(ts).toLocaleString([], { month:"short", day:"numeric", hour:"numeric", minute:"2-digit" }); }
 function fmtDate(ts){ return new Date(ts).toLocaleDateString([], { month:"short", day:"numeric", year:"numeric" }); }
@@ -722,16 +797,141 @@ function button(text, cls, onClick){
   return b;
 }
 function exerciseTitleBlock(exerciseId, metaText){
-  const wrap = el("div");
-  wrap.appendChild(el("div","exercise-name", exerciseName(exerciseId)));
-  if (metaText) wrap.appendChild(el("div","exercise-meta", metaText));
-  return { wrap, copy: wrap };
+  const exercise = exerciseById(exerciseId);
+  const wrap = el("div","exercise-title-block");
+  wrap.appendChild(exerciseThumbnail(exercise));
+  const copy = el("div","exercise-title-copy");
+  copy.appendChild(el("div","exercise-name", exercise?.name || "Exercise"));
+  if (metaText) copy.appendChild(el("div","exercise-meta", metaText));
+  wrap.appendChild(copy);
+  return { wrap, copy };
 }
 function toast(msg){
   els.toast.textContent = msg;
   els.toast.classList.remove("hidden");
   clearTimeout(els.toast._timer);
   els.toast._timer = setTimeout(() => els.toast.classList.add("hidden"), 1800);
+}
+
+function exerciseVisualIndex(exercise){
+  const name = String(exercise?.name || "").toLowerCase();
+  const group = String(exercise?.muscleGroup || "").toLowerCase();
+  if (/stair/.test(name)) return 14;
+  if (/elliptical|treadmill|run|walk|bike|cycling|rowing machine|cardio/.test(name) || group === "cardio") return 13;
+  if (/plank|core/.test(name) || group === "core") return 15;
+  if (/hip thrust|glute/.test(name)) return 12;
+  if (/calf/.test(name)) return 11;
+  if (/leg extension/.test(name)) return 10;
+  if (/leg curl/.test(name)) return 9;
+  if (/deadlift|back extension|pull.through/.test(name)) return 8;
+  if (/squat|leg press|lunge/.test(name)) return 7;
+  if (/shoulder press|overhead press/.test(name)) return 6;
+  if (/bicep|hammer curl|cable curl/.test(name)) return 5;
+  if (/tricep|pressdown|pushdown|dip/.test(name)) return 4;
+  if (/lateral raise|reverse pec|rear.delt/.test(name)) return 3;
+  if (/pulldown|pull.up/.test(name)) return 2;
+  if (/row/.test(name)) return 1;
+  if (/bench|chest|press|fly/.test(name)) return 0;
+  if (group === "legs") return 7;
+  if (group === "back") return 1;
+  if (group === "shoulders") return 6;
+  if (group === "arms") return 5;
+  return 0;
+}
+
+function exerciseThumbnail(exercise, compact = false){
+  const name = String(exercise?.name || "").toLowerCase();
+  const cardioIndex = /rowing machine|rower/.test(name) ? 2
+    : /bike|cycling/.test(name) ? 1
+    : /walk/.test(name) ? 3
+    : /treadmill|run/.test(name) ? 0
+    : null;
+  const index = cardioIndex ?? exerciseVisualIndex(exercise);
+  const gridSize = cardioIndex === null ? 4 : 2;
+  const col = index % gridSize;
+  const row = Math.floor(index / gridSize);
+  const thumb = el("span", `exercise-thumb${compact ? " compact" : ""}`);
+  if (cardioIndex !== null) thumb.classList.add("cardio-sprite");
+  thumb.style.backgroundPosition = `${(col * 100) / (gridSize - 1)}% ${(row * 100) / (gridSize - 1)}%`;
+  thumb.setAttribute("aria-hidden", "true");
+  return thumb;
+}
+
+let lastUndoToastAt = 0;
+function blockAccidentalTextUndo(event){
+  if (!state.settings.blockTextUndo) return;
+  if (event.inputType !== "historyUndo" && event.inputType !== "historyRedo") return;
+  if (event.cancelable) event.preventDefault();
+  const now = Date.now();
+  if (now - lastUndoToastAt > 1800) {
+    lastUndoToastAt = now;
+    toast("Accidental text undo blocked");
+  }
+}
+
+function updateWakeLockStatus(){
+  if (!els.wakeLockStatus) return;
+  if (!state.settings.keepScreenAwake) {
+    els.wakeLockStatus.textContent = "Off. Your normal screen-lock setting applies.";
+    return;
+  }
+  if (!("wakeLock" in navigator)) {
+    els.wakeLockStatus.textContent = "Not available in this browser. On iPhone, add Lift Log to the Home Screen and use iOS 18.4 or later.";
+    return;
+  }
+  if (screenWakeLock && !screenWakeLock.released) {
+    els.wakeLockStatus.textContent = "Active while Lift Log is visible. This uses a little extra battery.";
+    return;
+  }
+  if (wakeLockError) {
+    els.wakeLockStatus.textContent = "Unavailable right now. Low Power Mode or the browser may be blocking it; tap the page to retry.";
+    return;
+  }
+  els.wakeLockStatus.textContent = document.visibilityState === "visible"
+    ? "Ready. Tap anywhere if the screen does not stay awake."
+    : "Paused while Lift Log is in the background.";
+}
+
+async function ensureScreenAwake({ notify = false } = {}){
+  updateWakeLockStatus();
+  if (!state.settings.keepScreenAwake || document.visibilityState !== "visible") return false;
+  if (!("wakeLock" in navigator) || typeof navigator.wakeLock?.request !== "function") {
+    if (notify) toast("Screen wake lock is not supported here");
+    return false;
+  }
+  if (screenWakeLock && !screenWakeLock.released) return true;
+  if (wakeLockRequestPromise) return wakeLockRequestPromise;
+
+  wakeLockRequestPromise = navigator.wakeLock.request("screen")
+    .then(lock => {
+      screenWakeLock = lock;
+      wakeLockError = "";
+      lock.addEventListener("release", () => {
+        if (screenWakeLock === lock) screenWakeLock = null;
+        updateWakeLockStatus();
+      });
+      updateWakeLockStatus();
+      if (notify) toast("Screen will stay awake");
+      return true;
+    })
+    .catch(error => {
+      wakeLockError = error?.name || "WakeLockError";
+      updateWakeLockStatus();
+      if (notify) toast("Could not keep the screen awake");
+      return false;
+    })
+    .finally(() => { wakeLockRequestPromise = null; });
+  return wakeLockRequestPromise;
+}
+
+async function releaseScreenWakeLock(){
+  const lock = screenWakeLock;
+  screenWakeLock = null;
+  wakeLockError = "";
+  if (lock && !lock.released) {
+    try { await lock.release(); } catch {}
+  }
+  updateWakeLockStatus();
 }
 
 function exerciseById(id){ return state.exercises.find(e => e.id === id) || null; }
@@ -831,6 +1031,9 @@ function exportSession(session){
               ? {
                   setNumber:set.setNumber,
                   durationMinutes:Number.isFinite(set.durationMinutes) ? set.durationMinutes : null,
+                  distanceKm:Number.isFinite(set.distanceKm) ? Number(set.distanceKm.toFixed(3)) : null,
+                  distance:Number.isFinite(set.distanceKm) ? Number(toDisplayDistance(set.distanceKm).toFixed(2)) : null,
+                  distanceUnit:distanceUnitLabel(),
                   rpe:Number.isFinite(set.rpe) ? set.rpe : null,
                   loggedAt:Number.isFinite(set.createdAt) ? new Date(set.createdAt).toISOString() : null
                 }
@@ -858,6 +1061,7 @@ function buildExportPayload(){
     app:{ name:"Lift Log", version:APP_VERSION },
     exportedAt:new Date().toISOString(),
     displayUnits:unitLabel(),
+    cardioDistanceUnit:distanceUnitLabel(),
     publishedPlan:state.publishedPlan,
     reviewInstructions:"Automatic weekly review uses the private Supabase sync. Upload this file to ChatGPT only as a manual backup or troubleshooting fallback.",
     summary:{
@@ -1636,6 +1840,7 @@ function buildPlannedSets(te){
         id:uid(),
         setNumber:i + 1,
         durationMinutes:Number(te.targetReps) || 10,
+        distanceKm:null,
         rpe:null,
         done:false,
         createdAt:Date.now()
@@ -1684,6 +1889,7 @@ function addSet(sessionExerciseId){
         id:uid(),
         setNumber:se.sets.length + 1,
         durationMinutes:previous?.durationMinutes || se.targetReps || 10,
+        distanceKm:Number.isFinite(previous?.distanceKm) ? previous.distanceKm : null,
         rpe:Number.isFinite(previous?.rpe) ? previous.rpe : null,
         done:false,
         createdAt:Date.now()
@@ -1718,6 +1924,7 @@ function updateSet(sessionExerciseId, setId, field, value){
   if (field === "reps") set.reps = Math.max(0, Math.floor(Number(value) || 0));
   if (field === "rir") set.rir = value === "" ? null : Math.max(0, Math.min(10, Number(value)));
   if (field === "durationMinutes") set.durationMinutes = Math.max(0, Number(value) || 0);
+  if (field === "distanceDisplay") set.distanceKm = toKilometers(value);
   if (field === "rpe") set.rpe = value === "" ? null : Math.max(1, Math.min(10, Number(value)));
   if (field === "type") set.type = value || "normal";
   saveState();
@@ -1803,7 +2010,16 @@ function addExercisesToWorkout(workoutId, ids){
   if (!w) return;
   ids.forEach(exerciseId => {
     if (!w.exercises.some(te => te.exerciseId === exerciseId)) {
-      w.exercises.push({ id: uid(), exerciseId, targetSets:3, targetReps:10, restSeconds:90, notes:"" });
+      const isDuration = isDurationExercise(exerciseId);
+      w.exercises.push({
+        id:uid(),
+        exerciseId,
+        targetSets:isDuration ? 1 : 3,
+        targetReps:10,
+        targetRepRange:isDuration ? "10 min" : "10",
+        restSeconds:isDuration ? 0 : 90,
+        notes:""
+      });
     }
   });
   saveState();
@@ -1815,7 +2031,10 @@ function updateTemplateExercise(workoutId, templateId, field, value){
   const te = w?.exercises.find(x => x.id === templateId);
   if (!te) return;
   if (field === "notes") te.notes = value;
-  else te[field] = Math.max(field === "restSeconds" ? 10 : 1, Number(value) || te[field]);
+  else {
+    const minimum = field === "restSeconds" ? (isDurationExercise(te.exerciseId) ? 0 : 10) : 1;
+    te[field] = Math.max(minimum, Number(value) || te[field] || minimum);
+  }
   saveState();
 }
 function removeTemplateExercise(workoutId, templateId){
@@ -1841,6 +2060,7 @@ function addCustomExercise(data){
     name,
     muscleGroup: String(data.muscleGroup || "Other").trim() || "Other",
     equipment: String(data.equipment || "Other").trim() || "Other",
+    trackingType:data.trackingType === "duration" ? "duration" : "weight_reps",
     notes: String(data.notes || "").trim(),
     isCustom: true
   };
@@ -1910,6 +2130,10 @@ function openCustomExerciseModal(onDone, prefillName = ""){
       <input id="mName" class="input" placeholder="Name" value="${escapeHtml(prefillName)}" />
       <input id="mMuscle" class="input" placeholder="Muscle group" />
       <input id="mEquip" class="input" placeholder="Equipment" />
+      <select id="mTracking" class="input" aria-label="Tracking type">
+        <option value="weight_reps">Strength: weight and reps</option>
+        <option value="duration">Cardio: time and distance</option>
+      </select>
       <input id="mNotes" class="input" placeholder="Notes" />
     </div>
     <div class="row-between" style="margin-top:12px">
@@ -1924,6 +2148,7 @@ function openCustomExerciseModal(onDone, prefillName = ""){
       name: $("mName").value,
       muscleGroup: $("mMuscle").value,
       equipment: $("mEquip").value,
+      trackingType: $("mTracking").value,
       notes: $("mNotes").value
     });
     if (!exercise) return;
@@ -1964,11 +2189,17 @@ function openExercisePicker(workoutId, selected = new Set()){
     }
     filtered.forEach(exercise => {
       const row = el("label","setting-row");
-      row.innerHTML = `
-        <span><strong>${escapeHtml(exercise.name)}</strong><small>${escapeHtml(exercise.muscleGroup)} - ${escapeHtml(exercise.equipment)}</small></span>
-        <input type="checkbox" ${selected.has(exercise.id) ? "checked" : ""} />
-      `;
-      row.querySelector("input").onchange = (e) => {
+      row.classList.add("exercise-picker-row");
+      row.appendChild(exerciseThumbnail(exercise, true));
+      const copy = el("span","exercise-picker-copy");
+      copy.appendChild(el("strong","", exercise.name));
+      copy.appendChild(el("small","", `${exercise.muscleGroup} - ${exercise.equipment}`));
+      row.appendChild(copy);
+      const checkbox = el("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = selected.has(exercise.id);
+      row.appendChild(checkbox);
+      checkbox.onchange = (e) => {
         if (e.target.checked) selected.add(exercise.id);
         else selected.delete(exercise.id);
         $("mCount").textContent = `${selected.size} selected`;
@@ -2092,11 +2323,11 @@ function renderActiveWorkout(){
       `Target ${targetLabel(se)}`,
       se.restSeconds > 0 ? `Rest ${se.restSeconds}s` : null,
       best ? `Best est. 1RM ${fmtWeight(e1rm(best))}` : null,
-      isDuration && last?.durationMinutes ? `Last ${last.durationMinutes} min${Number.isFinite(last.rpe) ? ` at RPE ${last.rpe}` : ""}` : null,
+      isDuration && cardioSetSummary(last) ? `Last ${cardioSetSummary(last)}` : null,
       !isDuration && last ? `Last ${last.reps} x ${fmtWeight(last.weightLb)}` : null
     ].filter(Boolean).join(" - "));
     if (isDuration) {
-      title.copy.appendChild(el("div","previous-weight", last?.durationMinutes ? `Previous cardio: ${last.durationMinutes} minutes` : "Previous cardio: none yet"));
+      title.copy.appendChild(el("div","previous-weight", cardioSetSummary(last) ? `Previous cardio: ${cardioSetSummary(last)}` : "Previous cardio: none yet"));
     } else {
       title.copy.appendChild(el("div","previous-weight", last ? `Previous weight: ${fmtWeight(last.weightLb)}` : "Previous weight: none yet"));
     }
@@ -2124,7 +2355,7 @@ function renderActiveWorkout(){
     const table = el("table","set-table");
     table.classList.toggle("duration-table", isDuration);
     table.innerHTML = isDuration
-      ? `<thead><tr><th>Set</th><th>Minutes</th><th>RPE</th><th>Done</th><th></th></tr></thead>`
+      ? `<thead><tr><th>Set</th><th>Minutes</th><th>Distance (${distanceUnitLabel()})</th><th>RPE</th><th>Done</th><th></th></tr></thead>`
       : `<thead><tr><th>Set</th><th>Type</th><th>Weight</th><th>Reps</th><th>RIR</th><th>Done</th><th></th></tr></thead>`;
     const tbody = el("tbody");
     se.sets.forEach(set => {
@@ -2134,6 +2365,7 @@ function renderActiveWorkout(){
         ? `
           <td>${set.setNumber}</td>
           <td><input data-field="durationMinutes" type="number" inputmode="decimal" min="0" step="1" value="${set.durationMinutes || ""}" aria-label="Cardio minutes" /></td>
+          <td><input data-field="distanceDisplay" type="number" inputmode="decimal" min="0" step="0.01" value="${displayDistanceValue(set.distanceKm)}" placeholder="${distanceUnitLabel()}" aria-label="Cardio distance in ${distanceUnitLabel()}" /></td>
           <td><input data-field="rpe" type="number" inputmode="decimal" min="1" max="10" step="0.5" value="${Number.isFinite(set.rpe) ? set.rpe : ""}" placeholder="1-10" aria-label="Cardio RPE" /></td>
           <td class="set-done"><input data-field="done" type="checkbox" ${set.done ? "checked" : ""} /></td>
           <td><button class="mini-btn" data-action="remove">Del</button></td>
@@ -2253,6 +2485,7 @@ function renderWorkoutDetail(){
     return;
   }
   workout.exercises.forEach(te => {
+    const isDuration = isDurationExercise(te.exerciseId);
     const card = el("div","exercise-card");
     const header = el("div","exercise-head");
     const best = bestSetForExercise(te.exerciseId);
@@ -2266,7 +2499,7 @@ function renderWorkoutDetail(){
     const grid = el("div","grid2");
     [
       ["targetSets", "Sets", te.targetSets],
-      ["targetReps", "Reps", te.targetReps],
+      ["targetReps", isDuration ? "Minutes" : "Reps", te.targetReps],
       ["restSeconds", "Rest seconds", te.restSeconds]
     ].forEach(([field, label, value]) => {
       const fieldWrap = el("label","field");
@@ -2275,12 +2508,12 @@ function renderWorkoutDetail(){
       input.type = "number";
       input.inputMode = "numeric";
       input.pattern = "[0-9]*";
-      input.min = field === "restSeconds" ? "10" : "1";
+      input.min = field === "restSeconds" ? (isDuration ? "0" : "10") : "1";
       input.placeholder = label;
       input.value = value;
       input.addEventListener("change", e => updateTemplateExercise(workout.id, te.id, field, e.target.value));
       fieldWrap.appendChild(input);
-      fieldWrap.appendChild(el("small","field-help", field === "restSeconds" ? "Timer after each completed set" : field === "targetSets" ? "Planned working sets" : "Target reps per set"));
+      fieldWrap.appendChild(el("small","field-help", field === "restSeconds" ? "Timer after each completed set" : field === "targetSets" ? "Planned sets" : isDuration ? "Target minutes per set" : "Target reps per set"));
       grid.appendChild(fieldWrap);
     });
     card.appendChild(grid);
@@ -2379,7 +2612,7 @@ function renderHistoryDetail(){
       const table = el("table","set-table");
       table.classList.toggle("duration-table", isDuration);
       table.innerHTML = isDuration
-        ? "<thead><tr><th>Set</th><th>Minutes</th><th>RPE</th></tr></thead>"
+        ? `<thead><tr><th>Set</th><th>Minutes</th><th>Distance (${distanceUnitLabel()})</th><th>RPE</th></tr></thead>`
         : "<thead><tr><th>Set</th><th>Type</th><th>Weight</th><th>Reps</th><th>RIR</th><th>Est. 1RM</th></tr></thead>";
       const tbody = el("tbody");
       const best = isDuration ? null : bestSetForExercise(se.exerciseId);
@@ -2390,6 +2623,7 @@ function renderHistoryDetail(){
           ? `
             <td>${set.setNumber}</td>
             <td>${Number.isFinite(set.durationMinutes) ? set.durationMinutes : "-"}</td>
+            <td>${Number.isFinite(set.distanceKm) ? fmtDistance(set.distanceKm) : "-"}</td>
             <td>${Number.isFinite(set.rpe) ? set.rpe : "-"}</td>
           `
           : `
@@ -2415,11 +2649,20 @@ function renderSettingsRoute(){
   renderNotificationStatus();
   renderSyncSettings();
   els.unitsToggle.checked = !!state.settings.isKg;
+  els.distanceUnitSelect.value = distanceUnitLabel();
   els.autoRestToggle.checked = !!state.settings.autoRest;
   els.timerSoundToggle.checked = !!state.settings.timerSound;
   els.testTimerSoundBtn.disabled = !state.settings.timerSound;
   els.blankWeightUsesBaselineToggle.checked = !!state.settings.blankWeightUsesBaseline;
+  els.keepScreenAwakeToggle.checked = !!state.settings.keepScreenAwake;
+  els.blockTextUndoToggle.checked = !!state.settings.blockTextUndo;
+  updateWakeLockStatus();
   els.unitsToggle.onchange = () => { state.settings.isKg = els.unitsToggle.checked; saveState(); renderAll(); };
+  els.distanceUnitSelect.onchange = () => {
+    state.settings.distanceUnit = els.distanceUnitSelect.value === "km" ? "km" : "mi";
+    saveState();
+    renderAll();
+  };
   els.autoRestToggle.onchange = () => { state.settings.autoRest = els.autoRestToggle.checked; saveState(); };
   els.timerSoundToggle.onchange = () => {
     state.settings.timerSound = els.timerSoundToggle.checked;
@@ -2433,6 +2676,16 @@ function renderSettingsRoute(){
     }
   };
   els.blankWeightUsesBaselineToggle.onchange = () => { state.settings.blankWeightUsesBaseline = els.blankWeightUsesBaselineToggle.checked; saveState(); };
+  els.keepScreenAwakeToggle.onchange = () => {
+    state.settings.keepScreenAwake = els.keepScreenAwakeToggle.checked;
+    saveState();
+    if (state.settings.keepScreenAwake) void ensureScreenAwake({ notify:true });
+    else void releaseScreenWakeLock();
+  };
+  els.blockTextUndoToggle.onchange = () => {
+    state.settings.blockTextUndo = els.blockTextUndoToggle.checked;
+    saveState();
+  };
   els.customExercisesList.innerHTML = "";
   const customs = state.exercises.filter(e => e.isCustom).sort((a,b)=>a.name.localeCompare(b.name));
   if (!customs.length) {
@@ -2440,9 +2693,7 @@ function renderSettingsRoute(){
   } else {
     customs.forEach(exercise => {
       const row = el("div","setting-row");
-      const left = el("span");
-      left.innerHTML = `<strong>${escapeHtml(exercise.name)}</strong><small>${escapeHtml(exercise.muscleGroup)} - ${escapeHtml(exercise.equipment)}</small>`;
-      row.appendChild(left);
+      row.appendChild(exerciseTitleBlock(exercise.id, `${exercise.muscleGroup} - ${exercise.equipment}`).wrap);
       row.appendChild(button("Delete", "btn secondary", () => deleteCustomExercise(exercise.id)));
       els.customExercisesList.appendChild(row);
     });
@@ -2463,6 +2714,7 @@ renderAll();
 setRoute("workouts");
 startWorkoutClock();
 void initializeCloudFeatures();
+void ensureScreenAwake();
 if (state.timer.running && state.timer.endTs) {
   els.timerBar.classList.remove("hidden");
   els.timerSub.textContent = state.timer.label || "Ready for the next set";
