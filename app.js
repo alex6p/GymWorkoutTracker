@@ -5,7 +5,7 @@
 
 const LS_KEY = "gym_tracker_v6";
 const LEGACY_KEYS = ["gym_tracker_v5","gym_tracker_v4","gym_tracker_v3","gym_tracker_v2","gym_tracker_v1"];
-const APP_VERSION = "7.2.0";
+const APP_VERSION = "7.2.1";
 const WEEKLY_PLAN_MIGRATION = "strength_rebuild_2026_08_24_v1";
 const BASELINE_SESSION_KEY = "upper_a_2026_08_17";
 const PUBLISHED_PLAN_PATH = "./data/current-plan.json";
@@ -388,7 +388,7 @@ function validatePublishedPlan(plan){
     typeof day.name === "string" &&
     Number.isFinite(day.scheduleOrder) &&
     Number.isFinite(day.durationMinutes) && day.durationMinutes >= 30 && day.durationMinutes <= 60 &&
-    Array.isArray(day.exercises) && day.exercises.length >= 4 && day.exercises.length <= 5 &&
+    Array.isArray(day.exercises) && day.exercises.length >= 4 && day.exercises.length <= 8 &&
     day.exercises.every(item =>
       typeof item.exerciseName === "string" && item.exerciseName.trim() &&
       ["weight_reps","duration"].includes(item.trackingType) &&
