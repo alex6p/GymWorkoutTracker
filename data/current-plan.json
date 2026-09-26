@@ -1,351 +1,440 @@
 {
-  "schemaVersion": 1,
-  "planId": "strength-rebuild-2026-08-24-v1",
-  "generatedAt": "2026-08-23T23:30:00.000Z",
-  "planWeek": "2026-08-24",
-  "reviewSummary": "Initial automated-plan baseline using the completed Upper A results and conservative progression elsewhere.",
-  "progressionRule": "Keep the same load until every work set reaches the top of its rep range with at least 2 RIR. Then add about 5 lb to upper-body lifts or 5-10 lb to lower-body lifts. Do not increase every exercise automatically.",
-  "safetyNote": "Stop any movement that causes sharp or worsening pain and use a pain-free substitute rather than training through it.",
   "days": [
     {
-      "planKey": "strength-upper-a",
-      "scheduleOrder": 1,
+      "name": "Home Upper A + Core",
+      "notes": "Warm up for 5 minutes with an easy walk or march, shoulder circles, and a few comfortable incline push-ups. Complete only the programmed push-up sets; do not test your maximum.",
       "dayName": "Monday",
-      "name": "1 - Upper A (Monday)",
-      "durationMinutes": 45,
-      "notes": "About 40-50 minutes including a 5-minute warm-up. Superset lateral raises with pressdowns after the main lifts.",
+      "planKey": "strength-upper-a",
       "exercises": [
         {
-          "exerciseName": "Smith Machine Bench Press",
-          "muscleGroup": "Chest",
-          "equipment": "Smith Machine",
-          "trackingType": "weight_reps",
-          "movementType": "compound",
+          "notes": "Choose a floor or incline height that lets you keep ribs stacked and your back neutral. Do not take sets to failure.",
+          "equipment": "Bodyweight; floor or sturdy counter",
+          "targetRir": 2,
           "targetSets": 3,
-          "targetRepRange": "6-8",
-          "plannedLoadLb": 155,
-          "targetRir": 2,
-          "targetEffort": "2 RIR; final set may reach 1 RIR",
-          "restSeconds": 180,
-          "notes": "Use 135 lb x 10 as the final warm-up, then try to add one total work rep with clean form.",
-          "substitutions": ["Machine chest press", "Dumbbell bench press"]
-        },
-        {
-          "exerciseName": "Chest-Supported Row",
-          "muscleGroup": "Back",
-          "equipment": "Machine",
-          "trackingType": "weight_reps",
-          "movementType": "compound",
-          "targetSets": 3,
-          "targetRepRange": "6-8",
-          "plannedLoadLb": 145,
-          "targetRir": 2,
-          "targetEffort": "2 RIR",
-          "restSeconds": 120,
-          "notes": "Three productive work sets are enough; aim to add one total rep.",
-          "substitutions": ["Seated cable row"]
-        },
-        {
-          "exerciseName": "Neutral-Grip Pulldown",
-          "muscleGroup": "Back",
-          "equipment": "Cable",
-          "trackingType": "weight_reps",
-          "movementType": "accessory",
-          "targetSets": 2,
-          "targetRepRange": "8-12",
-          "plannedLoadLb": 105,
-          "targetRir": 2,
-          "targetEffort": "2 RIR",
+          "muscleGroup": "Chest, triceps, core",
           "restSeconds": 90,
-          "notes": "Aim for at least 17-18 total reps before increasing.",
-          "substitutions": ["Assisted neutral-grip pull-up"]
-        },
-        {
-          "exerciseName": "Cable Lateral Raise",
-          "muscleGroup": "Shoulders",
-          "equipment": "Cable",
+          "exerciseName": "Push-Up",
+          "movementType": "horizontal_push",
+          "targetEffort": "Smooth reps; stop with 2-3 clean reps left",
           "trackingType": "weight_reps",
-          "movementType": "accessory",
-          "targetSets": 2,
-          "targetRepRange": "12-15",
           "plannedLoadLb": null,
-          "targetRir": 3,
-          "targetEffort": "2-3 RIR",
-          "restSeconds": 60,
-          "notes": "Use the last successful weight and superset with rope pressdowns.",
-          "substitutions": ["Dumbbell lateral raise"]
+          "substitutions": [
+            "Incline push-up on a sturdy counter",
+            "Knee push-up"
+          ],
+          "targetRepRange": "6-15"
         },
         {
-          "exerciseName": "Rope Pressdown",
-          "muscleGroup": "Arms",
-          "equipment": "Cable",
-          "trackingType": "weight_reps",
-          "movementType": "accessory",
-          "targetSets": 2,
-          "targetRepRange": "12-15",
-          "plannedLoadLb": 30,
+          "notes": "Brace one hand on a sturdy couch or heavy chair and keep the torso quiet. When 3x15 is easy and pain-free, try the 35 lb kettlebell.",
+          "equipment": "25 lb dumbbell and sturdy support",
           "targetRir": 2,
-          "targetEffort": "2 RIR",
+          "targetSets": 3,
+          "muscleGroup": "Back, biceps",
+          "restSeconds": 90,
+          "exerciseName": "Supported One-Arm Dumbbell Row",
+          "movementType": "horizontal_pull",
+          "targetEffort": "Controlled pull with 2-3 reps left",
+          "trackingType": "weight_reps",
+          "plannedLoadLb": 25,
+          "substitutions": [
+            "Supported one-arm kettlebell row"
+          ],
+          "targetRepRange": "8-15/side"
+        },
+        {
+          "notes": "Keep feet planted, ribs down, and switch the dumbbell between hands while seated.",
+          "equipment": "25 lb dumbbell and floor",
+          "targetRir": 2,
+          "targetSets": 2,
+          "muscleGroup": "Chest, triceps",
+          "restSeconds": 90,
+          "exerciseName": "Single-Arm Dumbbell Floor Press",
+          "movementType": "horizontal_push",
+          "targetEffort": "Controlled reps with 2-3 reps left",
+          "trackingType": "weight_reps",
+          "plannedLoadLb": 25,
+          "substitutions": [
+            "Incline push-up",
+            "Standard push-up"
+          ],
+          "targetRepRange": "8-15/side"
+        },
+        {
+          "notes": "Keep ribs down; stop the arm range before shrugging or back arching.",
+          "equipment": "Wall",
+          "targetRir": 3,
+          "targetSets": 2,
+          "muscleGroup": "Shoulders, upper back",
           "restSeconds": 60,
-          "notes": "Aim for 13 reps per set before increasing.",
-          "substitutions": ["Cable bar pressdown"]
+          "exerciseName": "Wall Slide",
+          "movementType": "scapular_control",
+          "targetEffort": "Slow, comfortable range",
+          "trackingType": "weight_reps",
+          "plannedLoadLb": null,
+          "substitutions": [
+            "Standing shoulder blade squeeze"
+          ],
+          "targetRepRange": "8-12"
+        },
+        {
+          "notes": "Keep the low back comfortable against the floor and shorten the reach if it arches.",
+          "equipment": "Bodyweight and floor",
+          "targetRir": 3,
+          "targetSets": 2,
+          "muscleGroup": "Core",
+          "restSeconds": 45,
+          "exerciseName": "Dead Bug",
+          "movementType": "core_anti_extension",
+          "targetEffort": "Slow reps with steady breathing",
+          "trackingType": "weight_reps",
+          "plannedLoadLb": null,
+          "substitutions": [
+            "Dead bug heel tap",
+            "Supine heel slide"
+          ],
+          "targetRepRange": "8/side"
         }
-      ]
+      ],
+      "scheduleOrder": 1,
+      "durationMinutes": 35
     },
     {
-      "planKey": "strength-lower-a",
-      "scheduleOrder": 2,
+      "name": "Home Lower A + Glutes",
+      "notes": "Warm up with 5 minutes of easy walking and 8 comfortable chair stands. Use shallow, pain-free ranges; this session should feel steady rather than exhausting.",
       "dayName": "Tuesday",
-      "name": "2 - Lower A (Tuesday)",
-      "durationMinutes": 45,
-      "notes": "About 40-50 minutes including a 5-minute warm-up. Repeat prior loads because no lower-body results were reported.",
+      "planKey": "strength-lower-a",
       "exercises": [
         {
-          "exerciseName": "Leg Press",
-          "muscleGroup": "Legs",
-          "equipment": "Machine",
-          "trackingType": "weight_reps",
-          "movementType": "compound",
-          "targetSets": 3,
-          "targetRepRange": "6-10",
-          "plannedLoadLb": null,
+          "notes": "Tap the chair and stand without dropping onto it. Once 3x15 is easy and pain-free, hold the 25 lb dumbbell at your chest.",
+          "equipment": "Bodyweight and sturdy chair",
           "targetRir": 3,
-          "targetEffort": "2-3 RIR",
-          "restSeconds": 180,
-          "notes": "Repeat the previous load and prioritize depth and control.",
-          "substitutions": ["Smith-machine squat"]
-        },
-        {
-          "exerciseName": "Romanian Deadlift",
-          "muscleGroup": "Legs",
-          "equipment": "Barbell",
-          "trackingType": "weight_reps",
-          "movementType": "compound",
           "targetSets": 3,
-          "targetRepRange": "6-10",
+          "muscleGroup": "Quads, glutes",
+          "restSeconds": 120,
+          "exerciseName": "Chair Sit-to-Stand",
+          "movementType": "squat",
+          "targetEffort": "Comfortable depth with 3 reps left",
+          "trackingType": "weight_reps",
           "plannedLoadLb": null,
+          "substitutions": [
+            "Higher-chair sit-to-stand",
+            "Shallow box squat"
+          ],
+          "targetRepRange": "8-15"
+        },
+        {
+          "notes": "Hold a sturdy support, use a short comfortable stance, and only descend as far as the knees and hips tolerate.",
+          "equipment": "Bodyweight and sturdy support",
           "targetRir": 3,
-          "targetEffort": "2-3 RIR",
-          "restSeconds": 180,
-          "notes": "Repeat the previous load and keep the range pain-free.",
-          "substitutions": ["Cable pull-through", "45-degree back extension"]
-        },
-        {
-          "exerciseName": "Seated Leg Curl",
-          "muscleGroup": "Legs",
-          "equipment": "Machine",
-          "trackingType": "weight_reps",
-          "movementType": "accessory",
           "targetSets": 2,
-          "targetRepRange": "10-15",
-          "plannedLoadLb": null,
-          "targetRir": 2,
-          "targetEffort": "2 RIR",
-          "restSeconds": 75,
-          "notes": "Superset with standing calf raises if the machines are close.",
-          "substitutions": ["Lying leg curl"]
-        },
-        {
-          "exerciseName": "Standing Calf Raise",
-          "muscleGroup": "Legs",
-          "equipment": "Machine",
+          "muscleGroup": "Quads, glutes",
+          "restSeconds": 90,
+          "exerciseName": "Supported Split Squat",
+          "movementType": "split_squat",
+          "targetEffort": "Shallow, controlled reps with 3 reps left",
           "trackingType": "weight_reps",
-          "movementType": "accessory",
-          "targetSets": 2,
-          "targetRepRange": "10-15",
           "plannedLoadLb": null,
-          "targetRir": 2,
-          "targetEffort": "2 RIR",
-          "restSeconds": 75,
-          "notes": "Use a full range of motion.",
-          "substitutions": ["Leg-press calf raise"]
+          "substitutions": [
+            "Chair sit-to-stand",
+            "Low step-up with hand support"
+          ],
+          "targetRepRange": "6-10/side"
         },
         {
-          "exerciseName": "Elliptical (Optional)",
-          "muscleGroup": "Cardio",
-          "equipment": "Elliptical",
-          "trackingType": "duration",
-          "movementType": "cardio",
+          "notes": "Pad the kettlebell over the hips, exhale as you lift, and stop before the low back arches. Use bodyweight if the load or setup irritates the back.",
+          "equipment": "35 lb kettlebell and floor",
+          "targetRir": 2,
+          "targetSets": 3,
+          "muscleGroup": "Glutes, hamstrings",
+          "restSeconds": 90,
+          "exerciseName": "Kettlebell Glute Bridge",
+          "movementType": "hip_extension",
+          "targetEffort": "Glute squeeze with 2-3 reps left",
+          "trackingType": "weight_reps",
+          "plannedLoadLb": 35,
+          "substitutions": [
+            "Bodyweight glute bridge",
+            "Couch hip thrust without weight"
+          ],
+          "targetRepRange": "10-15"
+        },
+        {
+          "notes": "Keep the top leg slightly behind you and avoid rolling the pelvis backward.",
+          "equipment": "Bodyweight and floor",
+          "targetRir": 2,
+          "targetSets": 2,
+          "muscleGroup": "Glute medius",
+          "restSeconds": 60,
+          "exerciseName": "Side-Lying Hip Abduction",
+          "movementType": "hip_abduction",
+          "targetEffort": "Slow reps with 2-3 reps left",
+          "trackingType": "weight_reps",
+          "plannedLoadLb": null,
+          "substitutions": [
+            "Standing supported hip abduction",
+            "Side-lying clamshell"
+          ],
+          "targetRepRange": "12-20/side"
+        },
+        {
+          "notes": "Reach only as far as you can without arching or rotating. Use arms-only or legs-only if needed.",
+          "equipment": "Bodyweight and floor",
+          "targetRir": 3,
+          "targetSets": 2,
+          "muscleGroup": "Core, glutes",
+          "restSeconds": 45,
+          "exerciseName": "Bird Dog",
+          "movementType": "core_stability",
+          "targetEffort": "Slow and stable; no trunk rotation",
+          "trackingType": "weight_reps",
+          "plannedLoadLb": null,
+          "substitutions": [
+            "Dead bug",
+            "Quadruped arm reach"
+          ],
+          "targetRepRange": "6-8/side"
+        },
+        {
+          "notes": "Optional. Shorten it if the back, hips, or knees become more uncomfortable.",
+          "equipment": "None",
+          "targetRir": 4,
           "targetSets": 1,
-          "targetRepRange": "8-12 min",
-          "plannedLoadLb": null,
-          "targetRir": null,
-          "targetEffort": "Easy conversational pace, RPE 4-5",
+          "muscleGroup": "Cardio, recovery",
           "restSeconds": 0,
-          "notes": "Optional after lifting; skip if your legs are unusually fatigued.",
-          "substitutions": ["Easy bike"]
+          "exerciseName": "Easy Walk",
+          "movementType": "cardio",
+          "targetEffort": "RPE 3-4; conversational pace",
+          "trackingType": "duration",
+          "plannedLoadLb": null,
+          "substitutions": [
+            "Easy march in place"
+          ],
+          "targetRepRange": "10-20 min"
         }
-      ]
+      ],
+      "scheduleOrder": 2,
+      "durationMinutes": 45
     },
     {
-      "planKey": "strength-upper-b",
-      "scheduleOrder": 3,
+      "name": "Home Upper B + Core",
+      "notes": "Warm up for 5 minutes. Keep pressing submaximal; the goal is repeatable quality, not a daily push-up record.",
       "dayName": "Thursday",
-      "name": "3 - Upper B (Thursday)",
-      "durationMinutes": 45,
-      "notes": "About 40-50 minutes including a 5-minute warm-up. Superset reverse pec deck with cable curls.",
+      "planKey": "strength-upper-b",
       "exercises": [
         {
-          "exerciseName": "Incline Dumbbell Press",
-          "muscleGroup": "Chest",
-          "equipment": "Dumbbells",
-          "trackingType": "weight_reps",
-          "movementType": "compound",
-          "targetSets": 3,
-          "targetRepRange": "6-10",
-          "plannedLoadLb": null,
+          "notes": "Keep ribs down and shoulders comfortable. Pause softly when the upper arm reaches the floor.",
+          "equipment": "25 lb dumbbell and floor",
           "targetRir": 2,
-          "targetEffort": "2 RIR",
-          "restSeconds": 180,
-          "notes": "Repeat the previous load unless every set reached the top of the range at 2 RIR.",
-          "substitutions": ["Incline machine press"]
+          "targetSets": 3,
+          "muscleGroup": "Chest, triceps",
+          "restSeconds": 90,
+          "exerciseName": "Single-Arm Dumbbell Floor Press",
+          "movementType": "horizontal_push",
+          "targetEffort": "Controlled reps with 2-3 reps left",
+          "trackingType": "weight_reps",
+          "plannedLoadLb": 25,
+          "substitutions": [
+            "Incline push-up",
+            "Standard push-up"
+          ],
+          "targetRepRange": "8-15/side"
         },
         {
-          "exerciseName": "Seated Cable Row",
-          "muscleGroup": "Back",
-          "equipment": "Cable",
-          "trackingType": "weight_reps",
-          "movementType": "compound",
-          "targetSets": 3,
-          "targetRepRange": "8-12",
-          "plannedLoadLb": null,
+          "notes": "Use support so the low back does not have to hold a bent-over position. Progress to the 35 lb kettlebell only after clean 3x15.",
+          "equipment": "25 lb dumbbell and sturdy support",
           "targetRir": 2,
-          "targetEffort": "2 RIR",
-          "restSeconds": 120,
-          "notes": "Use controlled reps without leaning back.",
-          "substitutions": ["Chest-supported machine row"]
+          "targetSets": 3,
+          "muscleGroup": "Back, biceps",
+          "restSeconds": 90,
+          "exerciseName": "Supported One-Arm Dumbbell Row",
+          "movementType": "horizontal_pull",
+          "targetEffort": "Controlled pull with 2-3 reps left",
+          "trackingType": "weight_reps",
+          "plannedLoadLb": 25,
+          "substitutions": [
+            "Supported one-arm kettlebell row"
+          ],
+          "targetRepRange": "8-15/side"
         },
         {
-          "exerciseName": "Machine Shoulder Press",
-          "muscleGroup": "Shoulders",
-          "equipment": "Machine",
-          "trackingType": "weight_reps",
-          "movementType": "compound",
-          "targetSets": 2,
-          "targetRepRange": "8-12",
-          "plannedLoadLb": null,
+          "notes": "Hold a towel at chest height and pull outward without shrugging or holding your breath.",
+          "equipment": "Towel",
           "targetRir": 3,
-          "targetEffort": "2-3 RIR",
-          "restSeconds": 120,
-          "notes": "Keep the range comfortable for the shoulders.",
-          "substitutions": ["Seated dumbbell overhead press"]
+          "targetSets": 2,
+          "muscleGroup": "Upper back, rear shoulders",
+          "restSeconds": 60,
+          "exerciseName": "Towel Pull-Apart Isometric",
+          "movementType": "scapular_retraction",
+          "targetEffort": "Firm but submaximal tension",
+          "trackingType": "duration",
+          "plannedLoadLb": null,
+          "substitutions": [
+            "Standing shoulder blade squeeze"
+          ],
+          "targetRepRange": "20-30 sec"
         },
         {
-          "exerciseName": "Reverse Pec Deck",
-          "muscleGroup": "Shoulders",
-          "equipment": "Machine",
-          "trackingType": "weight_reps",
-          "movementType": "accessory",
+          "notes": "Keep elbows straight at the finish and gently push the wall away without rounding through the low back.",
+          "equipment": "Wall",
+          "targetRir": 3,
           "targetSets": 2,
-          "targetRepRange": "12-15",
+          "muscleGroup": "Shoulders, serratus, core",
+          "restSeconds": 60,
+          "exerciseName": "Wall Push-Up Plus",
+          "movementType": "scapular_control",
+          "targetEffort": "Smooth shoulder-blade motion",
+          "trackingType": "weight_reps",
           "plannedLoadLb": null,
-          "targetRir": 2,
-          "targetEffort": "2 RIR",
-          "restSeconds": 75,
-          "notes": "Superset with cable curls.",
-          "substitutions": ["Cable rear-delt fly"]
+          "substitutions": [
+            "Counter push-up plus",
+            "Wall slide"
+          ],
+          "targetRepRange": "10-15"
         },
         {
-          "exerciseName": "Cable Curl",
-          "muscleGroup": "Arms",
-          "equipment": "Cable",
-          "trackingType": "weight_reps",
-          "movementType": "accessory",
+          "notes": "Keep knees bent and hips gently forward. Stop if it aggravates the back or hip.",
+          "equipment": "Bodyweight and floor",
+          "targetRir": 3,
           "targetSets": 2,
-          "targetRepRange": "10-15",
+          "muscleGroup": "Core, glute medius",
+          "restSeconds": 45,
+          "exerciseName": "Knee Side Plank",
+          "movementType": "core_anti_lateral_flexion",
+          "targetEffort": "End before shaking or back discomfort",
+          "trackingType": "duration",
           "plannedLoadLb": null,
-          "targetRir": 2,
-          "targetEffort": "2 RIR",
-          "restSeconds": 75,
-          "notes": "Keep the upper arm still.",
-          "substitutions": ["Dumbbell curl"]
+          "substitutions": [
+            "Standing forearm wall plank",
+            "Dead bug"
+          ],
+          "targetRepRange": "15-25 sec/side"
         }
-      ]
+      ],
+      "scheduleOrder": 3,
+      "durationMinutes": 35
     },
     {
-      "planKey": "strength-lower-b",
-      "scheduleOrder": 4,
+      "name": "Home Lower B + Glutes",
+      "notes": "Warm up with 5 minutes of easy walking and bodyweight glute bridges. Keep all lower-body work in a pain-free range.",
       "dayName": "Friday",
-      "name": "4 - Lower B + StairMaster (Friday)",
-      "durationMinutes": 50,
-      "notes": "About 40-50 minutes including a 5-minute warm-up and optional cardio.",
+      "planKey": "strength-lower-b",
       "exercises": [
         {
-          "exerciseName": "Hack Squat",
-          "muscleGroup": "Legs",
-          "equipment": "Machine",
-          "trackingType": "weight_reps",
-          "movementType": "compound",
-          "targetSets": 3,
-          "targetRepRange": "6-10",
-          "plannedLoadLb": null,
+          "notes": "Use only a low, non-slip, weight-bearing step and a sturdy hand support. Drive through the whole foot; do not use a chair seat as a step.",
+          "equipment": "Bodyweight, low stable step, and hand support",
           "targetRir": 3,
-          "targetEffort": "2-3 RIR",
-          "restSeconds": 180,
-          "notes": "Repeat the previous load because no lower-body results were reported.",
-          "substitutions": ["Smith-machine squat", "Leg press"]
-        },
-        {
-          "exerciseName": "Hip Thrust",
-          "muscleGroup": "Legs",
-          "equipment": "Barbell or Machine",
-          "trackingType": "weight_reps",
-          "movementType": "compound",
           "targetSets": 3,
-          "targetRepRange": "8-12",
+          "muscleGroup": "Quads, glutes",
+          "restSeconds": 90,
+          "exerciseName": "Low Step-Up",
+          "movementType": "step_up",
+          "targetEffort": "Controlled reps with 3 reps left",
+          "trackingType": "weight_reps",
           "plannedLoadLb": null,
+          "substitutions": [
+            "Chair sit-to-stand",
+            "Supported split squat"
+          ],
+          "targetRepRange": "6-10/side"
+        },
+        {
+          "notes": "Pad the kettlebell, keep the chin tucked, and stop before the low back arches. Use the floor glute bridge if the couch setup feels awkward or irritates the back.",
+          "equipment": "35 lb kettlebell and sturdy couch",
           "targetRir": 2,
-          "targetEffort": "2 RIR",
+          "targetSets": 3,
+          "muscleGroup": "Glutes, hamstrings",
           "restSeconds": 120,
-          "notes": "Pause briefly at lockout without overextending the lower back.",
-          "substitutions": ["Glute-drive machine"]
-        },
-        {
-          "exerciseName": "Leg Extension",
-          "muscleGroup": "Legs",
-          "equipment": "Machine",
+          "exerciseName": "Hip Thrust",
+          "movementType": "hip_extension",
+          "targetEffort": "Strong glute squeeze with 2-3 reps left",
           "trackingType": "weight_reps",
-          "movementType": "accessory",
-          "targetSets": 2,
-          "targetRepRange": "10-15",
-          "plannedLoadLb": null,
-          "targetRir": 2,
-          "targetEffort": "2 RIR",
-          "restSeconds": 75,
-          "notes": "Use smooth, controlled reps.",
-          "substitutions": ["Reverse sled drag"]
+          "plannedLoadLb": 35,
+          "substitutions": [
+            "35 lb kettlebell glute bridge",
+            "Bodyweight glute bridge"
+          ],
+          "targetRepRange": "8-12"
         },
         {
-          "exerciseName": "Seated Calf Raise",
-          "muscleGroup": "Legs",
-          "equipment": "Machine",
+          "notes": "Keep feet together and pelvis stacked. Use a 3-second lowering phase when bodyweight becomes easy.",
+          "equipment": "Bodyweight and floor",
+          "targetRir": 2,
+          "targetSets": 2,
+          "muscleGroup": "Glute medius",
+          "restSeconds": 60,
+          "exerciseName": "Side-Lying Clamshell",
+          "movementType": "hip_external_rotation",
+          "targetEffort": "Slow reps with 2-3 reps left",
           "trackingType": "weight_reps",
-          "movementType": "accessory",
-          "targetSets": 2,
-          "targetRepRange": "10-15",
           "plannedLoadLb": null,
-          "targetRir": 2,
-          "targetEffort": "2 RIR",
-          "restSeconds": 75,
-          "notes": "Keep a full range of motion.",
-          "substitutions": ["Dumbbell seated calf raise"]
+          "substitutions": [
+            "Standing supported hip abduction",
+            "Side-lying hip abduction"
+          ],
+          "targetRepRange": "12-20/side"
         },
         {
-          "exerciseName": "StairMaster (Optional)",
-          "muscleGroup": "Cardio",
-          "equipment": "StairMaster",
-          "trackingType": "duration",
-          "movementType": "cardio",
+          "notes": "Use both legs first. Hold the 25 lb dumbbell only after 2x20 is easy and pain-free.",
+          "equipment": "Bodyweight and sturdy support",
+          "targetRir": 2,
+          "targetSets": 2,
+          "muscleGroup": "Calves",
+          "restSeconds": 60,
+          "exerciseName": "Supported Calf Raise",
+          "movementType": "calf_raise",
+          "targetEffort": "Controlled pause at the top",
+          "trackingType": "weight_reps",
+          "plannedLoadLb": null,
+          "substitutions": [
+            "Seated bodyweight calf raise"
+          ],
+          "targetRepRange": "12-20"
+        },
+        {
+          "notes": "Only lower the heel as far as you can while keeping the back comfortable and controlled.",
+          "equipment": "Bodyweight and floor",
+          "targetRir": 3,
+          "targetSets": 2,
+          "muscleGroup": "Core",
+          "restSeconds": 45,
+          "exerciseName": "Dead Bug Heel Tap",
+          "movementType": "core_anti_extension",
+          "targetEffort": "Slow reps with steady breathing",
+          "trackingType": "weight_reps",
+          "plannedLoadLb": null,
+          "substitutions": [
+            "Dead bug",
+            "Supine heel slide"
+          ],
+          "targetRepRange": "8/side"
+        },
+        {
+          "notes": "Optional. A short indoor march is fine if weather or travel makes walking inconvenient.",
+          "equipment": "None",
+          "targetRir": 4,
           "targetSets": 1,
-          "targetRepRange": "8-12 min",
-          "plannedLoadLb": null,
-          "targetRir": null,
-          "targetEffort": "Steady moderate pace, RPE 5-6",
+          "muscleGroup": "Cardio, recovery",
           "restSeconds": 0,
-          "notes": "It should feel like cardio, not another hard leg workout. Skip if unusually fatigued.",
-          "substitutions": ["Elliptical"]
+          "exerciseName": "Easy Walk",
+          "movementType": "cardio",
+          "targetEffort": "RPE 3-4; conversational pace",
+          "trackingType": "duration",
+          "plannedLoadLb": null,
+          "substitutions": [
+            "Easy march in place"
+          ],
+          "targetRepRange": "10-20 min"
         }
-      ]
+      ],
+      "scheduleOrder": 4,
+      "durationMinutes": 45
     }
-  ]
+  ],
+  "planId": "strength-rebuild-2026-09-28-v2",
+  "planWeek": "2026-09-28",
+  "safetyNote": "Use a pain-free range and controlled tempo. Because of current low-back and knee symptoms and recent spine and hip findings, do not perform kettlebell swings, jumping, loaded spinal bending or twisting, or any movement that causes sharp or worsening pain. Stop for radiating pain, numbness, or weakness and get medical guidance rather than training through it.",
+  "generatedAt": "2026-09-26T22:14:41.312Z",
+  "reviewSummary": "User-requested conversion from gym training to a home-only plan using bodyweight, one 35 lb kettlebell, and one 25 lb dumbbell. Because these home variations do not yet have reliable performance data, difficulty starts conservatively and no lift was increased from gym results.",
+  "schemaVersion": 1,
+  "progressionRule": "Use double progression. Add reps until every work set reaches the top of its range with clean form and 2-3 RIR. Then make the movement slightly harder with a slower 3-second lowering phase, a more difficult bodyweight angle, or—where noted—move from the 25 lb dumbbell to the 35 lb kettlebell. Do not add sets or train to failure just because the available weights are fixed."
 }
