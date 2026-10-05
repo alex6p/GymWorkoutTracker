@@ -5,10 +5,10 @@
 
 const LS_KEY = "gym_tracker_v6";
 const LEGACY_KEYS = ["gym_tracker_v5","gym_tracker_v4","gym_tracker_v3","gym_tracker_v2","gym_tracker_v1"];
-const APP_VERSION = "7.2.2";
+const APP_VERSION = "7.2.3";
 const WEEKLY_PLAN_MIGRATION = "strength_rebuild_2026_08_24_v1";
 const BASELINE_SESSION_KEY = "upper_a_2026_08_17";
-const PUBLISHED_PLAN_PATH = "./data/current-plan.json";
+const PUBLISHED_PLAN_PATH = "./data/current-plan.json?release=2026-10-05-v1";
 const PUBLISHED_SYNC_CONFIG_PATH = "./data/sync-config.json";
 const SYNC_LS_KEY = "lift_log_private_sync_v1";
 
