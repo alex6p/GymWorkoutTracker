@@ -210,10 +210,10 @@
   </div>
 
   <script src="./native-bridge.js"></script>
-  <script src="./app.js"></script>
+  <script src="./app.js?release=7.2.3"></script>
   <script>
     if (!window.LiftLogNative?.isNative && "serviceWorker" in navigator) {
-      navigator.serviceWorker.register("./sw.js").then((registration) => {
+      navigator.serviceWorker.register("./sw.js?release=7.2.3").then((registration) => {
         registration.update();
         setInterval(() => registration.update(), 60 * 60 * 1000);
       });
