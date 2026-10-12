@@ -5,10 +5,10 @@
 
 const LS_KEY = "gym_tracker_v6";
 const LEGACY_KEYS = ["gym_tracker_v5","gym_tracker_v4","gym_tracker_v3","gym_tracker_v2","gym_tracker_v1"];
-const APP_VERSION = "7.2.3";
+const APP_VERSION = "7.2.4";
 const WEEKLY_PLAN_MIGRATION = "strength_rebuild_2026_08_24_v1";
 const BASELINE_SESSION_KEY = "upper_a_2026_08_17";
-const PUBLISHED_PLAN_PATH = "./data/current-plan.json?release=2026-10-05-v1";
+const PUBLISHED_PLAN_PATH = "./data/current-plan.json";
 const PUBLISHED_SYNC_CONFIG_PATH = "./data/sync-config.json";
 const SYNC_LS_KEY = "lift_log_private_sync_v1";
 
@@ -109,6 +109,9 @@ document.addEventListener("visibilitychange", () => {
   }
 });
 window.addEventListener("pageshow", () => {
+  void refreshBestAvailablePlan();
+});
+window.addEventListener("focus", () => {
   void refreshBestAvailablePlan();
 });
 document.addEventListener("keydown", (event) => {
@@ -473,7 +476,8 @@ function applyPublishedPlan(plan){
 
 async function refreshPublishedPlan(){
   try {
-    const response = await fetch(PUBLISHED_PLAN_PATH, { cache:"no-store" });
+    const planUrl = `${PUBLISHED_PLAN_PATH}?refresh=${Date.now()}`;
+    const response = await fetch(planUrl, { cache:"no-store" });
     if (!response.ok) throw new Error(`Plan request failed (${response.status})`);
     const plan = await response.json();
     const changed = applyPublishedPlan(plan);
