@@ -2,12 +2,12 @@
   "days": [
     {
       "name": "Home Upper A + Core",
-      "notes": "No Upper A session was logged last week. Repeat the same loads, ranges, and RIR targets. Warm up 5 minutes with easy marching, shoulder circles, and comfortable incline push-ups.",
+      "notes": "Warm up 5 minutes with easy marching, shoulder circles, and comfortable incline push-ups. Upper A was completed; only the kettlebell row advances. Keep every pressing set submaximal.",
       "dayName": "Monday",
       "planKey": "strength-upper-a",
       "exercises": [
         {
-          "notes": "Repeat the same variation. Aim for even sets around 12 reps; elevate your hands before letting RIR fall below 2.",
+          "notes": "Hold the same variation. Last week was 3x15 at about 1 RIR, so stop earlier or elevate your hands enough to preserve 2 RIR.",
           "equipment": "Bodyweight; floor or sturdy counter",
           "targetRir": 2,
           "targetSets": 3,
@@ -25,7 +25,7 @@
           "targetRepRange": "6-15"
         },
         {
-          "notes": "Keep 35 lb. After 3x12 at 2 RIR, aim for 13 per side only if the torso stays quiet.",
+          "notes": "Progression earned after 3x15 at 35 lb with 2 RIR. Keep 35 lb, add a one-second squeeze at the top and three-second lowering, and reset to 10-12 per side.",
           "equipment": "35 lb kettlebell and sturdy support",
           "targetRir": 2,
           "targetSets": 3,
@@ -33,16 +33,16 @@
           "restSeconds": 90,
           "exerciseName": "Supported One-Arm Kettlebell Row",
           "movementType": "horizontal_pull",
-          "targetEffort": "Controlled pull with 2 reps left",
+          "targetEffort": "1-second top squeeze, 3-second lowering, 2 reps left",
           "trackingType": "weight_reps",
           "plannedLoadLb": 35,
           "substitutions": [
             "Supported one-arm dumbbell row at 25 lb"
           ],
-          "targetRepRange": "8-15/side"
+          "targetRepRange": "10-12/side"
         },
         {
-          "notes": "Keep 25 lb. After 2x12 at 2 RIR, target 13 per side with a soft pause on the floor.",
+          "notes": "Keep 25 lb and the same range. The recorded 8 RIR conflicts with prior performance, so it is not used to progress difficulty; aim for controlled reps at 2 RIR.",
           "equipment": "25 lb dumbbell and floor",
           "targetRir": 2,
           "targetSets": 2,
@@ -60,7 +60,7 @@
           "targetRepRange": "8-15/side"
         },
         {
-          "notes": "RIR was not logged, so repeat 8 controlled reps and shorten the range before arching the back.",
+          "notes": "Only one set was logged. Repeat two controlled sets of 8 and shorten the range before arching the back.",
           "equipment": "Wall",
           "targetRir": 3,
           "targetSets": 2,
@@ -77,7 +77,7 @@
           "targetRepRange": "8-12"
         },
         {
-          "notes": "Repeat 8 precise reps per side; stop before the low back arches.",
+          "notes": "Ten reps were logged without RIR. Repeat 8 precise reps per side and stop before the low back arches.",
           "equipment": "Bodyweight and floor",
           "targetRir": 3,
           "targetSets": 2,
@@ -100,12 +100,12 @@
     },
     {
       "name": "Home Lower A + Glutes",
-      "notes": "No Lower A session was logged last week. Repeat the same loads, ranges, and RIR targets. Warm up with 5 minutes of easy walking and comfortable unweighted chair stands.",
+      "notes": "Warm up with 5 minutes of easy walking and comfortable unweighted chair stands. Only the first two exercises had logged sets and RIR was missing, so repeat all prior targets without progression.",
       "dayName": "Tuesday",
       "planKey": "strength-lower-a",
       "exercises": [
         {
-          "notes": "Use 25 lb for all work sets. Tap the chair softly; switch to bodyweight if the knees, hips, or back object.",
+          "notes": "Repeat 25 lb for 3x8 before adding reps because RIR was not recorded. Tap the chair softly; switch to bodyweight if the knees, hips, or back object.",
           "equipment": "25 lb dumbbell and sturdy chair",
           "targetRir": 3,
           "targetSets": 3,
@@ -123,7 +123,7 @@
           "targetRepRange": "8-12"
         },
         {
-          "notes": "Keep bodyweight and use hand support. Reduce depth or reps enough to maintain the target effort.",
+          "notes": "Repeat bodyweight 2x6 per side with hand support because RIR was not recorded. Reduce depth if needed to preserve 3 RIR.",
           "equipment": "Bodyweight and sturdy support",
           "targetRir": 3,
           "targetSets": 2,
@@ -141,7 +141,7 @@
           "targetRepRange": "6-10/side"
         },
         {
-          "notes": "Keep 35 lb and aim for 11 controlled reps per set; stop before the low back arches.",
+          "notes": "No sets were logged last week. Keep 35 lb and repeat 3x10-15; stop before the low back arches.",
           "equipment": "35 lb kettlebell and floor",
           "targetRir": 2,
           "targetSets": 3,
@@ -159,7 +159,7 @@
           "targetRepRange": "10-15"
         },
         {
-          "notes": "Aim for 13 controlled reps per side without rolling the pelvis.",
+          "notes": "No sets were logged last week. Repeat 2x12-20 per side without rolling the pelvis.",
           "equipment": "Bodyweight and floor",
           "targetRir": 2,
           "targetSets": 2,
@@ -177,7 +177,7 @@
           "targetRepRange": "12-20/side"
         },
         {
-          "notes": "Home substitute for the Pallof press while no resistance band is available. Repeat six controlled reps before adding any.",
+          "notes": "No sets were logged last week. Home substitute for the Pallof press while no resistance band is available; repeat 2x6-8 controlled reps per side.",
           "equipment": "Bodyweight and floor",
           "targetRir": 3,
           "targetSets": 2,
@@ -435,11 +435,11 @@
       "durationMinutes": 45
     }
   ],
-  "planId": "strength-rebuild-2026-10-19-v1",
-  "planWeek": "2026-10-19",
+  "planId": "strength-rebuild-2026-10-26-v1",
+  "planWeek": "2026-10-26",
   "safetyNote": "Use a pain-free range and controlled tempo. Do not perform kettlebell swings, jumping, loaded spinal bending, or loaded twisting. Stop any movement that causes sharp or worsening pain, radiating pain, numbness, or weakness; use a pain-free substitute and seek medical guidance rather than training through it.",
-  "generatedAt": "2026-10-18T23:36:35Z",
-  "reviewSummary": "Reviewed 13 completed sessions from the most recent six weeks. No workout sessions were recorded from October 12 through October 18, so the October 12 home plan is carried forward without load, rep-range, or exercise changes. The absence of sessions is treated as missing data, not failed progression. The user also reported low recent activity, so the priority is completing repeatable submaximal work rather than testing strength. No new pain or soreness entry was available.",
+  "generatedAt": "2026-10-25T23:41:00Z",
+  "reviewSummary": "Reviewed 13 completed sessions from the most recent six weeks, including Home Upper A on October 19 and a shortened Home Lower A on October 20. The supported kettlebell row completed 3x15 per side at 35 lb with 2 RIR, so it progresses through slower tempo and a top squeeze rather than more weight. Push-ups completed 3x15 at about 1 RIR, so their difficulty is held. The floor-press RIR entries of 8 conflict with prior performance and are not used for progression. Lower A lacked RIR and only its first two exercises had sets; missing work is treated as no data. No Upper B or Lower B session and no new pain or soreness note were recorded.",
   "schemaVersion": 1,
-  "progressionRule": "Use double progression. Add reps only while clean form and the prescribed RIR are maintained. When every intended work set reaches the top of its range at the target RIR, progress with the stated slower tempo, pause, or harder pain-free variation because home load is fixed. Missing workouts or inconsistent RIR mean hold difficulty; do not reduce or advance an untested movement. Do not add sets or train to failure."
+  "progressionRule": "Use double progression. Add reps only while clean form and the prescribed RIR are maintained. When every intended work set reaches the top of its range at the target RIR, progress with the stated slower tempo, pause, or harder pain-free variation because home load is fixed. Missing exercises, shortened sessions, or inconsistent RIR mean hold difficulty; do not reduce or advance an untested movement. Do not add sets or train to failure."
 }
