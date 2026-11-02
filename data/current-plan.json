@@ -435,11 +435,11 @@
       "durationMinutes": 45
     }
   ],
-  "planId": "strength-rebuild-2026-10-26-v1",
-  "planWeek": "2026-10-26",
+  "planId": "strength-rebuild-2026-11-02-v1",
+  "planWeek": "2026-11-02",
   "safetyNote": "Use a pain-free range and controlled tempo. Do not perform kettlebell swings, jumping, loaded spinal bending, or loaded twisting. Stop any movement that causes sharp or worsening pain, radiating pain, numbness, or weakness; use a pain-free substitute and seek medical guidance rather than training through it.",
-  "generatedAt": "2026-10-25T23:41:00Z",
-  "reviewSummary": "Reviewed 13 completed sessions from the most recent six weeks, including Home Upper A on October 19 and a shortened Home Lower A on October 20. The supported kettlebell row completed 3x15 per side at 35 lb with 2 RIR, so it progresses through slower tempo and a top squeeze rather than more weight. Push-ups completed 3x15 at about 1 RIR, so their difficulty is held. The floor-press RIR entries of 8 conflict with prior performance and are not used for progression. Lower A lacked RIR and only its first two exercises had sets; missing work is treated as no data. No Upper B or Lower B session and no new pain or soreness note were recorded.",
+  "generatedAt": "2026-11-02T00:52:35Z",
+  "reviewSummary": "Reviewed 11 completed sessions from the most recent six weeks. No workout was recorded during October 26 through November 1, so the week is treated as missing data rather than failed progression. The approved home plan is carried forward without changing exercise selection, loads, rep ranges, sets, or difficulty. No new pain, soreness, or session-RPE note was recorded. Historical entries with missing RIR, inconsistent RIR, incomplete exercises, mislabeled plan weeks, and duration-unit issues were not used to justify progression.",
   "schemaVersion": 1,
   "progressionRule": "Use double progression. Add reps only while clean form and the prescribed RIR are maintained. When every intended work set reaches the top of its range at the target RIR, progress with the stated slower tempo, pause, or harder pain-free variation because home load is fixed. Missing exercises, shortened sessions, or inconsistent RIR mean hold difficulty; do not reduce or advance an untested movement. Do not add sets or train to failure."
 }
